@@ -144,6 +144,12 @@ if (typeof DrawingApp === 'undefined') {
         this.#brushMove(e);
       });
 
+      this.#canvas.addEventListener('touchmove', (e) => {
+        this.#brushMove(e);
+      }, {
+        passive: false
+      });
+
 
       document.addEventListener('mouseup', () => {
         this.#canDraw = false;
