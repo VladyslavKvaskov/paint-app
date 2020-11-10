@@ -65,6 +65,7 @@ if (typeof DrawingApp === 'undefined') {
     #colorPickerStroke;
     #canvasBounds;
     #brushSize = 2;
+    #brushSizePX = this.#brushSize;
     #canvasImage;
     #onresize;
     #scaleX = 1;
@@ -85,6 +86,7 @@ if (typeof DrawingApp === 'undefined') {
             this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
             this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
             this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
+            this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
 
             this.#ctx.scale(this.#scaleX, this.#scaleY);
             eval(this.#drawCommands);
@@ -707,7 +709,6 @@ if (typeof RangeSlider === 'undefined') {
       super();
     }
     connectedCallback() {
-
       this.innerHTML = '<div class="draggable-controller"></div>';
       this.#shiftX;
       this.#shiftY;
@@ -873,8 +874,6 @@ if (typeof RangeSlider === 'undefined') {
         this.#dragger.style.transform = 'translateX(-50%)';
         this.#dragger.style.left = '50%';
       }
-
-
 
     }
   }
