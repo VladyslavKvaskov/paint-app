@@ -4,6 +4,11 @@ if (typeof drawingAppCss === 'undefined') {
   const drawingAppCss = document.createElement('style');
 
   drawingAppCss.textContent = `
+    body{
+      margin: 0;
+      padding: 0;
+    }
+
     ${drawingAppElName} * {
       box-sizing: border-box;
     }
@@ -15,6 +20,7 @@ if (typeof drawingAppCss === 'undefined') {
       max-width: 100%;
       box-shadow: 0 0 36px rgba(0,0,0,0.1);
       padding: 10px;
+      box-sizing: border-box;
     }
 
     ${drawingAppElName} .da-wrappaer{
@@ -58,9 +64,33 @@ if (typeof DrawingApp === 'undefined') {
     #colorPickerFill;
     #colorPickerStroke;
     #canvasBounds;
-    #brushSize = 20;
+    #brushSize = 2;
+    #canvasImage;
+    #onresize;
+    #scaleX = 1;
+    #scaleY = 1;
+    #drawCommands = '';
+    #canvasOriginalWidth;
+    #canvasOriginalHeight;
+    #command;
+    #resizeTimeout;
+
     constructor() {
       super();
+
+      this.#onresize = async () => {
+        clearTimeout(this.#resizeTimeout);
+        this.#resizeTimeout = setTimeout(() => {
+          if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
+            this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+            this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
+            this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
+
+            this.#ctx.scale(this.#scaleX, this.#scaleY);
+            eval(this.#drawCommands);
+          }
+        }, 300);
+      }
     }
 
     connectedCallback() {
@@ -92,8 +122,12 @@ if (typeof DrawingApp === 'undefined') {
 
       this.#setCanvas();
 
+      this.#canvasOriginalWidth = this.#canvas.width;
+      this.#canvasOriginalHeight = this.#canvas.height;
+
       window.addEventListener('resize', () => {
         this.#setCanvas();
+        this.#onresize();
       });
 
       this.#brushInit = (e) => {
@@ -107,22 +141,28 @@ if (typeof DrawingApp === 'undefined') {
 
           this.#pageXY = {};
           if (e.touches) {
-            this.#pageXY.x = e.touches[0].pageX;
-            this.#pageXY.y = e.touches[0].pageY;
+            this.#pageXY.x = e.touches[0].clientX * this.#scaleX;
+            this.#pageXY.y = e.touches[0].clientY * this.#scaleY;
           } else {
-            this.#pageXY.x = e.pageX;
-            this.#pageXY.y = e.pageY;
+            this.#pageXY.x = e.clientX / this.#scaleX;
+            this.#pageXY.y = e.clientY / this.#scaleY;
           }
 
           // this.#ctx.fillRect(this.#pageXY.x - this.#canvasBounds.left - (this.#brushSize / 2), this.#pageXY.y - this.#canvasBounds.top - (this.#brushSize / 2), this.#brushSize, this.#brushSize);
 
-          this.#ctx.beginPath();
-          this.#ctx.arc(this.#pageXY.x - this.#canvasBounds.left - (this.#brushSize / 2), this.#pageXY.y - this.#canvasBounds.top - (this.#brushSize / 2), this.#brushSize, 0, 2 * Math.PI, false);
-          this.#ctx.fillStyle = this.#colorPickerFill.value;
-          this.#ctx.fill();
-          this.#ctx.strokeStyle = this.#colorPickerStroke.value;
-          this.#ctx.stroke();
+          this.#command = null;
+          this.#command = `
+              this.#ctx.beginPath();
+              this.#ctx.arc(${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)}, ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)}, ${this.#brushSize}, 0, ${2 * Math.PI}, false);
+              this.#ctx.fillStyle = '${this.#colorPickerFill.value}';
+              this.#ctx.fill();
+              this.#ctx.strokeStyle = '${this.#colorPickerStroke.value}';
+              this.#ctx.stroke();
+            `;
 
+          eval(this.#command);
+
+          this.#drawCommands += this.#command;
         }
       }
 
@@ -742,11 +782,11 @@ if (typeof RangeSlider === 'undefined') {
             this.#controllerForBounds = this.getBoundingClientRect();
             this.#pageXY = {};
             if (e.touches) {
-              this.#pageXY.x = e.touches[0].pageX;
-              this.#pageXY.y = e.touches[0].pageY;
+              this.#pageXY.x = e.touches[0].clientX;
+              this.#pageXY.y = e.touches[0].clientY;
             } else {
-              this.#pageXY.x = e.pageX;
-              this.#pageXY.y = e.pageY;
+              this.#pageXY.x = e.clientX;
+              this.#pageXY.y = e.clientY;
             }
 
             if (this.#dragger.position === 'absolute') {
