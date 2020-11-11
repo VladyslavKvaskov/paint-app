@@ -11,6 +11,7 @@ if (typeof drawingAppCss === 'undefined') {
 
     ${drawingAppElName} * {
       box-sizing: border-box;
+      font-family: sans-serif;
     }
 
     ${drawingAppElName}{
@@ -18,9 +19,10 @@ if (typeof drawingAppCss === 'undefined') {
       background: #fff;
       width: 700px;
       max-width: 100%;
-      box-shadow: 0 0 36px rgba(0,0,0,0.1);
+      box-shadow: 0 0 36px rgba(0,0,0,0.1), 0 0 100px #999;;
       padding: 10px;
       box-sizing: border-box;
+      border-radius: 7px;
     }
 
     ${drawingAppElName} .da-wrappaer{
@@ -43,6 +45,7 @@ if (typeof drawingAppCss === 'undefined') {
     ${drawingAppElName} color-picker .cp-init-button{
       width: 30px;
       height: 30px;
+      border: 1px solid #999;
     }
 
     ${drawingAppElName} canvas{
@@ -80,11 +83,49 @@ if (typeof drawingAppCss === 'undefined') {
       width: 70px;
       text-align: right;
     }
+
+    ${drawingAppElName} .da-action-bttns button{
+      appearance: button;
+      -moz-appearance: button;
+      -webkit-appearance: button;
+      cursor: pointer;
+      outline: none;
+      border: none;
+      background: #4285f4;
+      color: #fff;
+      box-shadow: 0 0 0 1px transparent, 0 0 0 3px transparent;
+      transition: 0.3s, background 0s, color 0s;
+      position: relative;
+      border-radius: 3px;
+      padding: 5px;
+    }
+
+    ${drawingAppElName} .da-action-bttns button:active, ${drawingAppElName} .da-action-bttns button:focus{
+      box-shadow: 0 0 0 1px #fff, 0 0 0 3px #4285f4;
+    }
+
+    ${drawingAppElName} button.da-export-bttn{
+      background: #00c851;
+    }
+
+    ${drawingAppElName} .da-action-bttns button.da-export-bttn:active, ${drawingAppElName} .da-action-bttns button.da-export-bttn:focus{
+      box-shadow: 0 0 0 1px #fff, 0 0 0 3px #00c851;
+    }
+
+    ${drawingAppElName} button.da-clear-bttn{
+      background: #ff3547;
+    }
+
+    ${drawingAppElName} .da-action-bttns button.da-clear-bttn:active, ${drawingAppElName} .da-action-bttns button.da-clear-bttn:focus{
+      box-shadow: 0 0 0 1px #fff, 0 0 0 3px #ff3547;
+    }
   `;
   document.head.appendChild(drawingAppCss);
 }
 
 if (typeof DrawingApp === 'undefined') {
+  let drawingAppId = 0;
+
   class DrawingApp extends HTMLElement {
     #wrapper;
     #canvasHolder;
@@ -117,7 +158,13 @@ if (typeof DrawingApp === 'undefined') {
     #strokeSizeInput;
     #recFunc;
     #animFunc;
+    #exportBttn;
+    #clearBttn;
+    #saveBttn;
     #index;
+    #id;
+    #downloadAnchor;
+
     #clearArc = (x, y, radius) => {
       this.#ctx.save();
       this.#ctx.globalCompositeOperation = 'destination-out';
@@ -127,8 +174,32 @@ if (typeof DrawingApp === 'undefined') {
       this.#ctx.restore();
     }
 
+
+    #arr;
+    #mime;
+    #bstr;
+    #n;
+    #u8arr;
+    #dataURLtoFile = (dataurl, filename) => {
+      this.#arr = dataurl.split(','),
+        this.#mime = this.#arr[0].match(/:(.*?);/)[1],
+        this.#bstr = atob(this.#arr[1]),
+        this.#n = this.#bstr.length,
+        this.#u8arr = new Uint8Array(this.#n);
+
+      while (this.#n--) {
+        this.#u8arr[this.#n] = this.#bstr.charCodeAt(this.#n);
+      }
+      return new File([this.#u8arr], filename, {
+        type: this.#mime
+      });
+    }
+
     constructor() {
       super();
+
+      drawingAppId++;
+      this.#id = drawingAppId;
 
       this.#onresize = async () => {
         clearTimeout(this.#resizeTimeout);
@@ -137,8 +208,10 @@ if (typeof DrawingApp === 'undefined') {
             this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
             this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
             this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
-            this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
-            this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
+            // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
+            // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
+            this.#brushSize = this.#brushSizePX;
+            this.#strokeSize = this.#strokeSizePX;
 
             this.#ctx.scale(this.#scaleX, this.#scaleY);
 
@@ -182,6 +255,13 @@ if (typeof DrawingApp === 'undefined') {
               <range-slider class="horizontal da-stroke-size"></range-slider>
             </div>
           </div>
+
+          <div class="da-action-bttns">
+            <button class="da-export-bttn">Export</button>
+            <button class="da-clear-bttn">Clear</button>
+            <button class="da-save-bttn">Save</button>
+          </div>
+
           <div class="da-canvas-holder">
             <canvas></canvas>
           </div>
@@ -197,13 +277,30 @@ if (typeof DrawingApp === 'undefined') {
       this.#strokeSizeController = this.querySelector('.da-stroke-size');
       this.#brushSizeInput = this.querySelector('.da-fill-size-input');
       this.#strokeSizeInput = this.querySelector('.da-stroke-size-input');
+      this.#exportBttn = this.querySelector('.da-export-bttn');
+      this.#clearBttn = this.querySelector('.da-clear-bttn');
+      this.#saveBttn = this.querySelector('.da-save-bttn');
 
       this.#ctx = this.#canvas.getContext('2d');
+
+      this.#clearBttn.addEventListener('click', () => {
+        this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+      });
+
+      this.#saveBttn.addEventListener('click', () => {
+        this.#downloadAnchor = document.createElement('a');
+        this.#downloadAnchor.setAttribute('download', 'download.png');
+        this.#downloadAnchor.href = this.#canvas.toDataURL();
+        document.body.appendChild(this.#downloadAnchor);
+        this.#downloadAnchor.click();
+        this.#downloadAnchor.remove();
+      });
 
       this.#setCanvas = () => {
         if (this.#canvas.width !== this.#canvasHolder.offsetWidth) {
           this.#canvas.width = this.#canvasHolder.offsetWidth;
           this.#canvas.height = this.#canvasHolder.offsetWidth / 2;
+          this.#onresize();
         }
       }
 
@@ -212,6 +309,48 @@ if (typeof DrawingApp === 'undefined') {
       this.#canvasOriginalWidth = this.#canvas.width;
       this.#canvasOriginalHeight = this.#canvas.height;
 
+      this.#brushSizeInput.addEventListener('input', () => {
+        if (!isNaN(this.#brushSizeInput.value)) {
+          if (this.#brushSizeInput.value > 100) {
+            this.#brushSizeInput.value = 100;
+          } else if (this.#brushSizeInput.value < 0) {
+            this.#brushSizeInput.value = 0;
+          }
+        } else {
+          this.#brushSizeInput.value = 0;
+        }
+
+        this.#brushSizeController.value = {
+          x: this.#brushSizeInput.value,
+          y: null
+        };
+
+        // this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        this.#brushSize = parseInt(this.#brushSizeController.value.x);
+        this.#brushSizePX = this.#brushSize;
+      });
+
+      this.#strokeSizeInput.addEventListener('input', () => {
+        if (!isNaN(this.#strokeSizeInput.value)) {
+          if (this.#strokeSizeInput.value > 100) {
+            this.#strokeSizeInput.value = 100;
+          } else if (this.#strokeSizeInput.value < 0) {
+            this.#strokeSizeInput.value = 0;
+          }
+        } else {
+          this.#strokeSizeInput.value = 0;
+        }
+
+        this.#strokeSizeController.value = {
+          x: this.#strokeSizeInput.value,
+          y: null
+        };
+
+        // this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        this.#strokeSize = parseInt(this.#strokeSizeController.value.x);
+        this.#strokeSizePX = this.#strokeSize;
+      });
+
       this.#brushSizeController.value = {
         x: this.#brushSize,
         y: null
@@ -219,7 +358,8 @@ if (typeof DrawingApp === 'undefined') {
 
       this.#brushSizeController.addEventListener('input', (e) => {
         this.#brushSizeInput.value = parseInt(this.#brushSizeController.value.x);
-        this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        // this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        this.#brushSize = parseInt(this.#brushSizeController.value.x);
         this.#brushSizePX = this.#brushSize;
       });
 
@@ -230,13 +370,13 @@ if (typeof DrawingApp === 'undefined') {
 
       this.#strokeSizeController.addEventListener('input', (e) => {
         this.#strokeSizeInput.value = parseInt(this.#strokeSizeController.value.x);
-        this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        // this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        this.#strokeSize = parseInt(this.#strokeSizeController.value.x);
         this.#strokeSizePX = this.#strokeSize;
       });
 
       window.addEventListener('resize', () => {
         this.#setCanvas();
-        this.#onresize();
       });
 
       this.#brushInit = (e) => {
@@ -352,6 +492,10 @@ if (typeof colorPickerCss === 'undefined') {
       background: #ffd86f;
     }
 
+    range-slider .draggable-controller.transition{
+      transition: 0.3s;
+    }
+
     range-slider{
       position: relative;
       height: 9px;
@@ -408,6 +552,7 @@ if (typeof colorPickerCss === 'undefined') {
       transition: 0.3s, background 0s, color 0s;
       position: relative;
       border-radius: 3px;
+      padding: 5px;
     }
 
     color-picker .cp-init-button:active, color-picker .cp-init-button:focus{
@@ -604,7 +749,8 @@ if (typeof ColorPicker === 'undefined') {
         --cp-active-color-${this.#cpId}: rgba(0, 0, 0, 1);
       }
       color-picker.cp-${this.#cpId} .cp-init-button{
-        background-color: var(--cp-current-color-${this.#cpId});
+        background: linear-gradient(to top, var(--cp-current-color-${this.#cpId}), var(--cp-current-color-${this.#cpId})), url('data:image/svg+xml;utf8, <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><path fill="white" d="M1,0H2V1H1V0ZM0,1H1V2H0V1Z"/><path fill="gray" d="M0,0H1V1H0V0ZM1,1H2V2H1V1Z"/></svg>');
+        background-size: 100%, 5px;
       }
       color-picker.cp-${this.#cpId} .cp-color-palette{
         background: linear-gradient(to top, rgba(0, 0, 0, var(--cp-color-transparency-${this.#cpId})), transparent), linear-gradient(to left, rgba(var(--cp-color-range-slider-${this.#cpId}), var(--cp-color-transparency-${this.#cpId})), rgba(255, 255, 255, var(--cp-color-transparency-${this.#cpId})));
@@ -637,7 +783,7 @@ if (typeof ColorPicker === 'undefined') {
               </div>
             </div>
           </div>
-          <div class="cp-footer"><button type="button" class="cp-select-color-bttn">Select</button></div>
+          <div class="cp-footer"><button type="button" is="ripple-button" class="cp-select-color-bttn">Select</button></div>
         </div>
       `;
 
@@ -827,6 +973,7 @@ if (typeof RangeSlider === 'undefined') {
       this.#privateValue = val;
 
       this.#dragger = this.querySelector('.draggable-controller');
+      this.#dragger.classList.add('transition');
       this.#elementBounds = this.#dragger.getBoundingClientRect();
       this.#dragger.style.left = `calc(${this.#privateValue.x}% - ${this.#elementBounds.width / 2}px)`;
       this.#dragger.style.top = `calc(${this.#privateValue.y}% - ${this.#elementBounds.height / 2}px)`;
@@ -875,6 +1022,7 @@ if (typeof RangeSlider === 'undefined') {
         }
 
         this.#dragDestroy = () => {
+          this.#dragger.classList.add('transition');
           this.#canDrag = false;
           if (this.#hasBeenDragged) {
             this.#hasBeenDragged = false;
@@ -882,10 +1030,12 @@ if (typeof RangeSlider === 'undefined') {
         }
 
         this.#dragger.addEventListener('mousedown', (e) => {
+          this.#dragger.classList.add('transition');
           this.#dragInit(e);
         });
 
         this.#dragger.addEventListener('touchstart', (e) => {
+          this.#dragger.classList.add('transition');
           this.#dragInit(e);
         }, {
           passive: true
@@ -968,11 +1118,13 @@ if (typeof RangeSlider === 'undefined') {
         }
 
         this.addEventListener('mousedown', (e) => {
+          this.#dragger.classList.add('transition');
           this.#canDrag = true;
           this.#dragging(e);
         });
 
         this.addEventListener('touchstart', (e) => {
+          this.#dragger.classList.add('transition');
           this.#canDrag = true;
           this.#dragging(e);
         }, {
@@ -980,10 +1132,12 @@ if (typeof RangeSlider === 'undefined') {
         });
 
         document.addEventListener('mousemove', (e) => {
+          this.#dragger.classList.remove('transition');
           this.#dragging(e);
         });
 
         document.addEventListener('touchmove', (e) => {
+          this.#dragger.classList.remove('transition');
           this.#dragging(e);
         }, {
           passive: false
