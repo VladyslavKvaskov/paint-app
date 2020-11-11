@@ -164,6 +164,8 @@ if (typeof DrawingApp === 'undefined') {
     #index;
     #id;
     #downloadAnchor;
+    #blob;
+    #exportData;
 
     #clearArc = (x, y, radius) => {
       this.#ctx.save();
@@ -258,6 +260,7 @@ if (typeof DrawingApp === 'undefined') {
 
           <div class="da-action-bttns">
             <button class="da-export-bttn">Export</button>
+            <button class="da-import-bttn">Import</button>
             <button class="da-clear-bttn">Clear</button>
             <button class="da-save-bttn">Save</button>
           </div>
@@ -283,13 +286,25 @@ if (typeof DrawingApp === 'undefined') {
 
       this.#ctx = this.#canvas.getContext('2d');
 
+      this.#exportBttn.addEventListener('click', () => {
+        this.#downloadAnchor = document.createElement('a');
+        this.#downloadAnchor.setAttribute('download', 'download.txt');
+        this.#blob = new Blob(this.#drawCommands, {
+          type: 'text/plain'
+        });
+        this.#downloadAnchor.href = URL.createObjectURL(this.#blob);;
+        document.body.appendChild(this.#downloadAnchor);
+        this.#downloadAnchor.click();
+        this.#downloadAnchor.remove();
+      });
+
       this.#clearBttn.addEventListener('click', () => {
         this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
       });
 
       this.#saveBttn.addEventListener('click', () => {
         this.#downloadAnchor = document.createElement('a');
-        this.#downloadAnchor.setAttribute('download', 'download.png');
+        this.#downloadAnchor.setAttribute('download', 'data.png');
         this.#downloadAnchor.href = this.#canvas.toDataURL();
         document.body.appendChild(this.#downloadAnchor);
         this.#downloadAnchor.click();
