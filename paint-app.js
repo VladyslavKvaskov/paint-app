@@ -34,7 +34,10 @@ if (typeof drawingAppCss === 'undefined') {
     ${drawingAppElName} .da-controllers{
       width: 100%;
       background: #fff;
-      padding: 0 10px 10px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      padding-bottom: 10px;
     }
 
     ${drawingAppElName} color-picker .cp-init-button{
@@ -45,6 +48,37 @@ if (typeof drawingAppCss === 'undefined') {
     ${drawingAppElName} canvas{
       box-shadow: 0 0 3px #999;
       border-radius: 7px;
+    }
+
+    ${drawingAppElName} .da-fill-color, ${drawingAppElName} .da-stroke-color{
+      width: calc(50% - 15px);
+      padding: 10px;
+      box-shadow: 0 0 3px #999;
+      border-radius: 7px;
+    }
+
+    ${drawingAppElName} .da-fill-size, ${drawingAppElName} .da-stroke-size{
+      margin-top: 10px;
+      background: #999;
+      height: 5px;
+    }
+
+    ${drawingAppElName} .da-fill-size .draggable-controller, ${drawingAppElName} .da-stroke-size .draggable-controller{
+      background: #999;
+    }
+
+    ${drawingAppElName} .da-size-input{
+      display: flex;
+      flex-wrap: no-wrap;
+      align-items: center;
+    }
+
+    ${drawingAppElName} .da-size-input input{
+      outline: none;
+      border: none;
+      font-size: 16px;
+      width: 70px;
+      text-align: right;
     }
   `;
   document.head.appendChild(drawingAppCss);
@@ -64,32 +98,68 @@ if (typeof DrawingApp === 'undefined') {
     #colorPickerFill;
     #colorPickerStroke;
     #canvasBounds;
-    #brushSize = 2;
+    #brushSize = 1;
     #brushSizePX = this.#brushSize;
+    #strokeSize = 0;
+    #strokeSizePX = this.#strokeSize;
     #canvasImage;
     #onresize;
     #scaleX = 1;
     #scaleY = 1;
-    #drawCommands = '';
+    #drawCommands = [];
     #canvasOriginalWidth;
     #canvasOriginalHeight;
     #command;
     #resizeTimeout;
+    #brushSizeController;
+    #strokeSizeController;
+    #brushSizeInput;
+    #strokeSizeInput;
+    #recFunc;
+    #animFunc;
+    #index;
+    #clearArc = (x, y, radius) => {
+      this.#ctx.save();
+      this.#ctx.globalCompositeOperation = 'destination-out';
+      this.#ctx.beginPath();
+      this.#ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+      this.#ctx.fill();
+      this.#ctx.restore();
+    }
 
     constructor() {
       super();
 
       this.#onresize = async () => {
         clearTimeout(this.#resizeTimeout);
-        this.#resizeTimeout = setTimeout(() => {
+        this.#resizeTimeout = setTimeout(async () => {
           if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
             this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
             this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
             this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
             this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
+            this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
 
             this.#ctx.scale(this.#scaleX, this.#scaleY);
-            eval(this.#drawCommands);
+
+            // this.#recFunc = () => {
+            //   this.#index = 0;
+            //   this.#animFunc = () => {
+            //     if (this.#index < this.#drawCommands.length) {
+            //       eval(this.#drawCommands[this.#index]);
+            //       this.#index++;
+            //       requestAnimationFrame(this.#animFunc);
+            //     }
+            //   }
+            //
+            //   this.#animFunc();
+            // };
+            //
+            // this.#recFunc();
+
+            // for (this.#command of this.#drawCommands) {
+            eval(this.#drawCommands.join(''));
+            // }
           }
         }, 300);
       }
@@ -99,8 +169,18 @@ if (typeof DrawingApp === 'undefined') {
       this.innerHTML = `
         <div class="da-wrappaer">
           <div class="da-controllers">
-            <color-picker class="da-cp-fill"></color-picker>
-            <color-picker class="da-cp-stroke"></color-picker>
+            <div class="da-fill-color">
+              <div>Fill:</div>
+              <color-picker class="da-cp-fill"></color-picker>
+              <div class="da-size-input"><input class="da-fill-size-input" type="text" value="${this.#brushSize}"><span>px</span></div>
+              <range-slider class="horizontal da-fill-size"></range-slider>
+            </div>
+            <div class="da-stroke-color">
+              <div>Stroke:</div>
+              <color-picker class="da-cp-stroke"></color-picker>
+              <div class="da-size-input"><input class="da-stroke-size-input" type="text" value="${this.#strokeSize}"><span>px</span></div>
+              <range-slider class="horizontal da-stroke-size"></range-slider>
+            </div>
           </div>
           <div class="da-canvas-holder">
             <canvas></canvas>
@@ -113,6 +193,11 @@ if (typeof DrawingApp === 'undefined') {
       this.#canvas = this.querySelector('canvas');
       this.#colorPickerFill = this.querySelector('color-picker.da-cp-fill');
       this.#colorPickerStroke = this.querySelector('color-picker.da-cp-stroke');
+      this.#brushSizeController = this.querySelector('.da-fill-size');
+      this.#strokeSizeController = this.querySelector('.da-stroke-size');
+      this.#brushSizeInput = this.querySelector('.da-fill-size-input');
+      this.#strokeSizeInput = this.querySelector('.da-stroke-size-input');
+
       this.#ctx = this.#canvas.getContext('2d');
 
       this.#setCanvas = () => {
@@ -126,6 +211,28 @@ if (typeof DrawingApp === 'undefined') {
 
       this.#canvasOriginalWidth = this.#canvas.width;
       this.#canvasOriginalHeight = this.#canvas.height;
+
+      this.#brushSizeController.value = {
+        x: this.#brushSize,
+        y: null
+      };
+
+      this.#brushSizeController.addEventListener('input', (e) => {
+        this.#brushSizeInput.value = parseInt(this.#brushSizeController.value.x);
+        this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        this.#brushSizePX = this.#brushSize;
+      });
+
+      this.#strokeSizeController.value = {
+        x: this.#strokeSize,
+        y: null
+      };
+
+      this.#strokeSizeController.addEventListener('input', (e) => {
+        this.#strokeSizeInput.value = parseInt(this.#strokeSizeController.value.x);
+        this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+        this.#strokeSizePX = this.#strokeSize;
+      });
 
       window.addEventListener('resize', () => {
         this.#setCanvas();
@@ -153,18 +260,30 @@ if (typeof DrawingApp === 'undefined') {
           // this.#ctx.fillRect(this.#pageXY.x - this.#canvasBounds.left - (this.#brushSize / 2), this.#pageXY.y - this.#canvasBounds.top - (this.#brushSize / 2), this.#brushSize, this.#brushSize);
 
           this.#command = null;
-          this.#command = `
-              this.#ctx.beginPath();
-              this.#ctx.arc(${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)}, ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)}, ${this.#brushSize}, 0, ${2 * Math.PI}, false);
-              this.#ctx.fillStyle = '${this.#colorPickerFill.value}';
-              this.#ctx.fill();
-              this.#ctx.strokeStyle = '${this.#colorPickerStroke.value}';
-              this.#ctx.stroke();
-            `;
 
-          eval(this.#command);
+          this.#command = (`
+              ${this.#strokeSize > 0 ?
+               `this.#ctx.beginPath();
+                this.#ctx.arc(${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)}, ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)}, ${this.#brushSize + this.#strokeSize}, 0, ${2 * Math.PI}, false);
+                this.#ctx.arc(${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)}, ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)}, ${this.#brushSize}, 0, ${2 * Math.PI}, true);
+                this.#ctx.fillStyle = '${this.#colorPickerStroke.value}';
+                this.#ctx.fill();` : ''
+              }
 
-          this.#drawCommands += this.#command;
+              ${this.#brushSize > 0 ?
+                `
+                this.#ctx.beginPath();
+                this.#ctx.arc(${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)}, ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)}, ${this.#brushSize}, 0, ${2 * Math.PI}, false);
+                this.#ctx.fillStyle = '${this.#colorPickerFill.value}';
+                this.#ctx.fill();` : ''
+              }
+
+            `).trim();
+
+          if (this.#command !== '') {
+            eval(this.#command);
+            this.#drawCommands.push(this.#command);
+          }
         }
       }
 
@@ -326,17 +445,11 @@ if (typeof colorPickerCss === 'undefined') {
       border: none;
     }
 
-    color-picker .cp-color-palette .draggable-controller{
-      top: calc(100% - 9px);
-    }
-
     color-picker .draggable-controller{
       display: inline-block;
       width: 18px;
       height: 18px;
       position: absolute;
-      top: -9px;
-      left: -9px;
       border: 2px solid #fff;
       border-radius: 50%;
       background: #000;
@@ -346,10 +459,6 @@ if (typeof colorPickerCss === 'undefined') {
 
     color-picker .draggable-controller:active{
       box-shadow: 0 0 0 1px #000;
-    }
-
-    color-picker .cp-opacity .draggable-controller{
-      left: calc(100% - 9px);
     }
 
     color-picker .cp-colors, color-picker .cp-opacity{
@@ -705,9 +814,26 @@ if (typeof RangeSlider === 'undefined') {
     #dragging;
     #controllerForBounds;
     #pageXY;
+    #privateValue;
     constructor() {
       super();
     }
+
+    get value() {
+      return this.#privateValue;
+    }
+
+    set value(val) {
+      this.#privateValue = val;
+
+      this.#dragger = this.querySelector('.draggable-controller');
+      this.#elementBounds = this.#dragger.getBoundingClientRect();
+      this.#dragger.style.left = `calc(${this.#privateValue.x}% - ${this.#elementBounds.width / 2}px)`;
+      this.#dragger.style.top = `calc(${this.#privateValue.y}% - ${this.#elementBounds.height / 2}px)`;
+      this.#dragger.style.right = 'auto';
+      this.#dragger.style.bottom = 'auto';
+    }
+
     connectedCallback() {
       this.innerHTML = '<div class="draggable-controller"></div>';
       this.#shiftX;
@@ -718,7 +844,7 @@ if (typeof RangeSlider === 'undefined') {
       this.#percentY = null;
       this.#hasBeenDragged = false;
       this.#canDrag = false;
-      this.value = {
+      this.#privateValue = {
         x: null,
         y: null
       };
@@ -829,14 +955,14 @@ if (typeof RangeSlider === 'undefined') {
               }
             }
 
-            this.#dragger.style.left = `${this.#X}px`;
-            this.#dragger.style.top = `${this.#Y}px`;
+            this.#dragger.style.left = `calc(${this.#percentX}% - ${this.#elementBounds.width / 2}px)`;
+            this.#dragger.style.top = `calc(${this.#percentY}% - ${this.#elementBounds.height / 2}px)`;
             this.#dragger.style.right = 'auto';
             this.#dragger.style.bottom = 'auto';
             sliderPercents.x = this.#percentX;
             sliderPercents.y = this.#percentY;
-            this.value.x = this.#percentX;
-            this.value.y = this.#percentY;
+            this.#privateValue.x = this.#percentX;
+            this.#privateValue.y = this.#percentY;
             this.dispatchEvent(dragElementEvent);
           }
         }
