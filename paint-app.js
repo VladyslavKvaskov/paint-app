@@ -482,12 +482,30 @@ if (typeof DrawingApp === 'undefined') {
         this.#brushMove(e);
       });
 
+      document.addEventListener('mousedown', (e) => {
+        if (this.#brushType === 'line') {
+          this.#ctx.beginPath();
+        }
+
+        this.#canDraw = true;
+      });
+
       this.#canvas.addEventListener('touchstart', (e) => {
         if (this.#brushType === 'line') {
           this.#ctx.beginPath();
         }
         this.#brushInit(e);
         this.#brushMove(e);
+      }, {
+        passive: false
+      });
+
+      document.addEventListener('touchstart', (e) => {
+        if (this.#brushType === 'line') {
+          this.#ctx.beginPath();
+        }
+
+        this.#canDraw = true;
       }, {
         passive: false
       });
