@@ -168,6 +168,7 @@ if (typeof DrawingApp === 'undefined') {
     #exportData;
     #gCode = [];
     #outofCanvas = false;
+    #prevPoint = {x: 0, y: 0};
 
     #clearArc = (x, y, radius) => {
       this.#ctx.save();
@@ -440,28 +441,49 @@ if (typeof DrawingApp === 'undefined') {
             this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n`:''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
           } else {
             if (this.#strokeSize > 0) {
+              // this.#ctx.globalCompositeOperation = 'source-over';
               this.#ctx.lineWidth = this.#brushSize + this.#strokeSize;
               this.#ctx.lineCap = 'round';
+              // this.#ctx.lineJoin = 'round';
               this.#ctx.lineTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
               this.#ctx.strokeStyle = this.#colorPickerStroke.value;
               this.#ctx.stroke();
               if (this.#brushSize <= 0) {
-                this.#ctx.beginPath();
+                // this.#ctx.beginPath();
+                this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
               }
-              this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+              else{
+
+              }
+
+              // ctx.closePath();
+
+
+              // if(this.#brushSize > 0){
+              //   this.#ctx.globalCompositeOperation = 'destination-out';
+              //   this.#ctx.lineWidth = this.#brushSize;
+              //   this.#ctx.lineCap = 'round';
+              //   this.#ctx.lineTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+              //   this.#ctx.stroke();
+              //   this.#ctx.closePath();
+              //   this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+              // }
             }
 
+
+
+
             if (this.#brushSize > 0) {
+              // this.#ctx.globalCompositeOperation = 'source-over';
               this.#ctx.lineWidth = this.#brushSize;
               this.#ctx.lineCap = 'round';
               this.#ctx.lineTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
               this.#ctx.strokeStyle = this.#colorPickerFill.value;
               this.#ctx.stroke();
-              this.#ctx.beginPath();
-              this.#ctx.closePath();
+              // this.#ctx.beginPath();
+              // this.#ctx.closePath();
 
               this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
-
             }
 
             // this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n`:''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
@@ -482,13 +504,13 @@ if (typeof DrawingApp === 'undefined') {
         this.#brushMove(e);
       });
 
-      document.addEventListener('mousedown', (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
-
-        this.#canDraw = true;
-      });
+      // document.addEventListener('mousedown', (e) => {
+      //   if (this.#brushType === 'line') {
+      //     this.#ctx.beginPath();
+      //   }
+      //
+      //   this.#canDraw = true;
+      // });
 
       this.#canvas.addEventListener('touchstart', (e) => {
         if (this.#brushType === 'line') {
@@ -500,15 +522,15 @@ if (typeof DrawingApp === 'undefined') {
         passive: false
       });
 
-      document.addEventListener('touchstart', (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
-
-        this.#canDraw = true;
-      }, {
-        passive: false
-      });
+      // document.addEventListener('touchstart', (e) => {
+      //   if (this.#brushType === 'line') {
+      //     this.#ctx.beginPath();
+      //   }
+      //
+      //   this.#canDraw = true;
+      // }, {
+      //   passive: false
+      // });
 
 
 
@@ -561,13 +583,6 @@ if (typeof DrawingApp === 'undefined') {
   }
   customElements.define(drawingAppElName, DrawingApp);
 }
-
-
-
-
-
-
-
 
 
 if (typeof colorPickerCss === 'undefined') {
