@@ -159,17 +159,18 @@ if (typeof DrawingApp === 'undefined') {
     #recFunc;
     #animFunc;
     #exportBttn;
+    #importBttn;
     #clearBttn;
     #saveBttn;
     #index;
     #id;
     #downloadAnchor;
+    #importFile;
     #blob;
     #exportData;
     #gCode = [];
     #outofCanvas = false;
-    #prevPoint = {x: 0, y: 0};
-
+    #brushXY = {x: null, y: null};
     #clearArc = (x, y, radius) => {
       this.#ctx.save();
       this.#ctx.globalCompositeOperation = 'destination-out';
@@ -206,6 +207,9 @@ if (typeof DrawingApp === 'undefined') {
       drawingAppId++;
       this.#id = drawingAppId;
 
+      this.#importFile = document.createElement('input');
+      this.#importFile.type = 'file';
+
       this.#onresize = async () => {
         clearTimeout(this.#resizeTimeout);
         this.#resizeTimeout = setTimeout(async () => {
@@ -236,7 +240,7 @@ if (typeof DrawingApp === 'undefined') {
             // this.#recFunc();
 
             // for (this.#command of this.#drawCommands) {
-            eval(this.#drawCommands.join(''));
+            // eval(this.#drawCommands.join(''));
             // }
           }
         }, 300);
@@ -244,6 +248,8 @@ if (typeof DrawingApp === 'undefined') {
     }
 
     connectedCallback() {
+
+
       this.innerHTML = `
         <div class="da-wrappaer">
           <div class="da-controllers">
@@ -284,6 +290,7 @@ if (typeof DrawingApp === 'undefined') {
       this.#brushSizeInput = this.querySelector('.da-fill-size-input');
       this.#strokeSizeInput = this.querySelector('.da-stroke-size-input');
       this.#exportBttn = this.querySelector('.da-export-bttn');
+      this.#importBttn = this.querySelector('.da-import-bttn');
       this.#clearBttn = this.querySelector('.da-clear-bttn');
       this.#saveBttn = this.querySelector('.da-save-bttn');
 
@@ -299,6 +306,10 @@ if (typeof DrawingApp === 'undefined') {
         document.body.appendChild(this.#downloadAnchor);
         this.#downloadAnchor.click();
         this.#downloadAnchor.remove();
+      });
+
+      this.#importBttn.addEventListener('click', () => {
+        this.#importFile.click();
       });
 
       this.#clearBttn.addEventListener('click', () => {
@@ -399,6 +410,11 @@ if (typeof DrawingApp === 'undefined') {
       });
 
       this.#brushInit = (e) => {
+        if (this.#brushType === 'line') {
+          this.#ctx.beginPath();
+        }
+
+        this.#gCode.push('BEGIN\n');
         this.#canDraw = true
       }
 
@@ -409,23 +425,21 @@ if (typeof DrawingApp === 'undefined') {
 
           this.#pageXY = {};
           if (e.touches) {
-            this.#pageXY.x = e.touches[0].clientX * this.#scaleX;
-            this.#pageXY.y = e.touches[0].clientY * this.#scaleY;
+            this.#pageXY.x = (e.touches[0].clientX * this.#scaleX) - (this.#canvasBounds.left / this.#scaleX);
+            this.#pageXY.y = (e.touches[0].clientY * this.#scaleY) - (this.#canvasBounds.top / this.#scaleY);
           } else {
-            this.#pageXY.x = e.clientX / this.#scaleX;
-            this.#pageXY.y = e.clientY / this.#scaleY;
+            this.#pageXY.x = (e.clientX / this.#scaleX) - (this.#canvasBounds.left / this.#scaleX);
+            this.#pageXY.y = (e.clientY / this.#scaleY) - (this.#canvasBounds.top / this.#scaleY);
           }
-
-          // this.#ctx.fillRect(this.#pageXY.x - this.#canvasBounds.left - (this.#brushSize / 2), this.#pageXY.y - this.#canvasBounds.top - (this.#brushSize / 2), this.#brushSize, this.#brushSize);
 
           this.#command = null;
 
           if (this.#brushType === 'circle') {
             if (this.#strokeSize > 0) {
               this.#ctx.beginPath();
-              this.#ctx.arc(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY), this.#brushSize + this.#strokeSize, 0, 2 * Math.PI, false);
+              this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize + this.#strokeSize, 0, 2 * Math.PI, false);
               if (this.#strokeSize > 0 && this.#brushSize > 0) {
-                this.#ctx.arc(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY), this.#brushSize, 0, 2 * Math.PI, true);
+                this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize, 0, 2 * Math.PI, true);
               }
               this.#ctx.fillStyle = this.#colorPickerStroke.value;
               this.#ctx.fill();
@@ -433,73 +447,42 @@ if (typeof DrawingApp === 'undefined') {
 
             if (this.#brushSize > 0) {
               this.#ctx.beginPath();
-              this.#ctx.arc(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY), this.#brushSize, 0, 2 * Math.PI, false);
+              this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize, 0, 2 * Math.PI, false);
               this.#ctx.fillStyle = this.#colorPickerFill.value;
               this.#ctx.fill();
             }
 
-            this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n`:''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
+            this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x} ${this.#pageXY.y} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n`:''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x} ${this.#pageXY.y} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
           } else {
             if (this.#strokeSize > 0) {
-              // this.#ctx.globalCompositeOperation = 'source-over';
               this.#ctx.lineWidth = this.#brushSize + this.#strokeSize;
               this.#ctx.lineCap = 'round';
-              // this.#ctx.lineJoin = 'round';
-              this.#ctx.lineTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+              this.#ctx.lineTo(this.#pageXY.x, this.#pageXY.y);
               this.#ctx.strokeStyle = this.#colorPickerStroke.value;
               this.#ctx.stroke();
               if (this.#brushSize <= 0) {
-                // this.#ctx.beginPath();
-                this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+                this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
               }
-              else{
-
-              }
-
-              // ctx.closePath();
-
-
-              // if(this.#brushSize > 0){
-              //   this.#ctx.globalCompositeOperation = 'destination-out';
-              //   this.#ctx.lineWidth = this.#brushSize;
-              //   this.#ctx.lineCap = 'round';
-              //   this.#ctx.lineTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
-              //   this.#ctx.stroke();
-              //   this.#ctx.closePath();
-              //   this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
-              // }
             }
 
 
 
 
             if (this.#brushSize > 0) {
-              // this.#ctx.globalCompositeOperation = 'source-over';
               this.#ctx.lineWidth = this.#brushSize;
               this.#ctx.lineCap = 'round';
-              this.#ctx.lineTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+              this.#ctx.lineTo(this.#pageXY.x, this.#pageXY.y);
               this.#ctx.strokeStyle = this.#colorPickerFill.value;
               this.#ctx.stroke();
-              // this.#ctx.beginPath();
-              // this.#ctx.closePath();
-
-              this.#ctx.moveTo(this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX), this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY));
+              this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
             }
 
-            // this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n`:''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x - (this.#canvasBounds.left / this.#scaleX)} ${this.#pageXY.y - (this.#canvasBounds.top / this.#scaleY)} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
+            this.#gCode.push(`${this.#strokeSize > 0 ? `L1,${this.#brushSize + this.#strokeSize},${this.#colorPickerStroke.value} `:''}${this.#brushSize > 0 ? `L2,${this.#brushSize},${this.#colorPickerFill.value} `: ''}COORS,${this.#pageXY.x},${this.#pageXY.y}\n`);
           }
-
-          // if (this.#command !== '') {
-          //   eval(this.#command);
-          //   this.#drawCommands.push(this.#command);
-          // }
         }
       }
 
       this.#canvas.addEventListener('mousedown', (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
         this.#brushInit(e);
         this.#brushMove(e);
       });
@@ -513,9 +496,6 @@ if (typeof DrawingApp === 'undefined') {
       // });
 
       this.#canvas.addEventListener('touchstart', (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
         this.#brushInit(e);
         this.#brushMove(e);
       }, {
