@@ -162,6 +162,7 @@ if (typeof DrawingApp === 'undefined') {
     #importBttn;
     #clearBttn;
     #saveBttn;
+    #d;
     #index;
     #id;
     #downloadAnchor;
@@ -170,16 +171,19 @@ if (typeof DrawingApp === 'undefined') {
     #exportData;
     #gCode = [];
     #outofCanvas = false;
-    #brushXY = {x: null, y: null};
-    #clearArc = (x, y, radius) => {
-      this.#ctx.save();
-      this.#ctx.globalCompositeOperation = 'destination-out';
-      this.#ctx.beginPath();
-      this.#ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-      this.#ctx.fill();
-      this.#ctx.restore();
-    }
-
+    #tmp;
+    #tmp2;
+    #tmp3;
+    #tmp4;
+    #maxX;
+    #maxY;
+    #brushXY = {
+      x: null,
+      y: null
+    };
+    #com1;
+    #com2;
+    #com3;
     #brushType = 'line';
     #arr;
     #mime;
@@ -214,7 +218,7 @@ if (typeof DrawingApp === 'undefined') {
         clearTimeout(this.#resizeTimeout);
         this.#resizeTimeout = setTimeout(async () => {
           if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
-            this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+            this.#ctx.clearRect(0, 0, 1000000, 1000000);
             this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
             this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
             // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
@@ -223,27 +227,51 @@ if (typeof DrawingApp === 'undefined') {
             this.#strokeSize = this.#strokeSizePX;
 
             this.#ctx.scale(this.#scaleX, this.#scaleY);
-
-            // this.#recFunc = () => {
-            //   this.#index = 0;
-            //   this.#animFunc = () => {
-            //     if (this.#index < this.#drawCommands.length) {
-            //       eval(this.#drawCommands[this.#index]);
-            //       this.#index++;
-            //       requestAnimationFrame(this.#animFunc);
-            //     }
-            //   }
-            //
-            //   this.#animFunc();
-            // };
-            //
-            // this.#recFunc();
-
-            // for (this.#command of this.#drawCommands) {
-            // eval(this.#drawCommands.join(''));
-            // }
+            this.drawFromGcode(this.#gCode.join(''));
           }
         }, 300);
+      }
+    }
+
+    sleep(ms = 50) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async drawFromGcode(data, ms = 0) {
+      for (this.#d of data.split('\n')) {
+        if (this.#d === 'BEGIN') {
+          this.#ctx.beginPath();
+        } else if (this.#d === '') {
+          break;
+        } else {
+          this.#command = this.#d.split('  ');
+          this.#com1 = this.#command[0].split(' ');
+          this.#com2 = this.#command[1].split(' ');
+          this.#com3 = this.#command[2].split(' ');
+
+          if (this.#com1[0] !== 'EMPTY') {
+            this.#ctx.lineWidth = (this.#com2[0] === 'EMPTY') ? 0 : Number(this.#com2[0]) + Number(this.#com1[0]);
+            this.#ctx.lineCap = 'round';
+            this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
+            this.#ctx.strokeStyle = this.#com1[1];
+            this.#ctx.stroke();
+            if (this.#com2[0] === 'EMPTY') {
+              this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
+            }
+          }
+
+          if (this.#com2[0] !== 'EMPTY') {
+            this.#ctx.lineWidth = Number(this.#com2[0]);
+            this.#ctx.lineCap = 'round';
+            this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
+            this.#ctx.strokeStyle = this.#com2[1];
+            this.#ctx.stroke();
+            this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
+          }
+        }
+        if (!isNaN(ms) && ms > 0) {
+          await this.sleep(ms);
+        }
       }
     }
 
@@ -308,12 +336,58 @@ if (typeof DrawingApp === 'undefined') {
         this.#downloadAnchor.remove();
       });
 
+      this.#importFile.addEventListener('change', (e) => {
+        fetch(URL.createObjectURL(e.target.files[0])).then(r => r.text()).then(data => {
+
+          this.#maxX = 0;
+          this.#maxY = 0;
+
+          this.#tmp = data.split('\n');
+          for (this.#tmp2 of this.#tmp) {
+            if (this.#tmp2 !== 'BEGIN' && this.#tmp2 != '') {
+              this.#tmp3 = this.#tmp2;
+              this.#tmp3 = this.#tmp3.split('  ');
+              this.#tmp3 = this.#tmp3[2].split(' ');
+
+              if (this.#maxX < Number(this.#tmp3[2])) {
+                this.#maxX = Number(this.#tmp3[2]);
+              }
+              if (this.#maxY < Number(this.#tmp3[3])) {
+                this.#maxY = Number(this.#tmp3[3]);
+              }
+            }
+          }
+          this.#canvasOriginalWidth = this.#maxX;
+          this.#canvasOriginalHeight = this.#maxY;
+
+          this.#ctx.clearRect(0, 0, 1000000, 1000000);
+
+          if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
+            this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
+            this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
+            // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
+            // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
+            this.#brushSize = this.#brushSizePX;
+            this.#strokeSize = this.#strokeSizePX;
+            this.#ctx.scale(this.#scaleX, this.#scaleY);
+          }
+          this.drawFromGcode(data, 5);
+          data = data.split('\n').map((a) => a + '\n');
+          data.pop();
+          this.#gCode = data;
+        }).catch(err => {
+          console.log(err);
+        });
+
+        this.#importFile.value = null;
+      });
+
       this.#importBttn.addEventListener('click', () => {
         this.#importFile.click();
       });
 
       this.#clearBttn.addEventListener('click', () => {
-        this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+        this.#ctx.clearRect(0, 0, 1000000, 1000000);
         this.#gCode = [];
       });
 
@@ -465,9 +539,6 @@ if (typeof DrawingApp === 'undefined') {
               }
             }
 
-
-
-
             if (this.#brushSize > 0) {
               this.#ctx.lineWidth = this.#brushSize;
               this.#ctx.lineCap = 'round';
@@ -477,7 +548,10 @@ if (typeof DrawingApp === 'undefined') {
               this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
             }
 
-            this.#gCode.push(`${this.#strokeSize > 0 ? `L1,${this.#brushSize + this.#strokeSize},${this.#colorPickerStroke.value} `:''}${this.#brushSize > 0 ? `L2,${this.#brushSize},${this.#colorPickerFill.value} `: ''}COORS,${this.#pageXY.x},${this.#pageXY.y}\n`);
+            this.#tmp = `${this.#strokeSize > 0 || this.#brushSize > 0 ? `${this.#strokeSize > 0 ? `${this.#brushSize + this.#strokeSize} ${this.#colorPickerStroke.value.replace(/ /g, '')}`:'EMPTY'}  ${this.#brushSize > 0 ? `${this.#brushSize} ${this.#colorPickerFill.value.replace(/ /g, '')}`: 'EMPTY'}  ${this.#pageXY.x} ${this.#pageXY.y} ${this.#canvas.width} ${this.#canvas.height}\n` : ''}`;
+            if (this.#tmp !== '') {
+              this.#gCode.push(this.#tmp);
+            }
           }
         }
       }
@@ -548,13 +622,18 @@ if (typeof DrawingApp === 'undefined') {
         passive: false
       })
 
-
       document.addEventListener('mouseup', () => {
         this.#canDraw = false;
+        if (this.#gCode.length === 1) {
+          this.#gCode.pop();
+        }
       });
 
       document.addEventListener('touchend', () => {
         this.#canDraw = false;
+        if (this.#gCode.length === 1) {
+          this.#gCode.pop();
+        }
       }, {
         passive: false
       });
@@ -769,19 +848,21 @@ if (typeof colorPickerCss === 'undefined') {
 
 if (typeof ColorPicker === 'undefined') {
   let colorPickerInitCounter = 0;
-  const cpColorPickedEvent = new CustomEvent('select', {
-    bubbles: true
-  });
-
-  const cpColorPickingEvent = new CustomEvent('selecting', {
-    bubbles: true
-  });
 
   class ColorPicker extends HTMLElement {
     #R = 0;
     #G = 0;
     #B = 0;
     #A = 1;
+
+    #cpColorPickedEvent = new CustomEvent('select', {
+      bubbles: true
+    });
+
+    #cpColorPickingEvent = new CustomEvent('selecting', {
+      bubbles: true
+    });
+
     #gradient;
     #cpPalletteSlider;
     #colorsSlider;
@@ -943,7 +1024,7 @@ if (typeof ColorPicker === 'undefined') {
           y: this.#cpPalletteSlider.value.y
         }).join()})`);
         this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.dispatchEvent(cpColorPickingEvent);
+        this.dispatchEvent(this.#cpColorPickingEvent);
       });
 
       this.#colorsSlider.addEventListener('input', () => {
@@ -980,7 +1061,7 @@ if (typeof ColorPicker === 'undefined') {
           y: this.#cpPalletteSlider.value.y
         }).join()})`);
         this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.dispatchEvent(cpColorPickingEvent);
+        this.dispatchEvent(this.#cpColorPickingEvent);
       });
 
       this.#opacitySlider.addEventListener('input', () => {
@@ -992,7 +1073,7 @@ if (typeof ColorPicker === 'undefined') {
           y: this.#cpPalletteSlider.value.y
         }).join()})`);
         this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.dispatchEvent(cpColorPickingEvent);
+        this.dispatchEvent(this.#cpColorPickingEvent);
       });
 
       this.#selectColorBttn.addEventListener('click', () => {
@@ -1000,7 +1081,7 @@ if (typeof ColorPicker === 'undefined') {
         this.value = this.#activeColor;
         document.documentElement.style.setProperty(`--cp-current-color-${this.#cpId}`, this.#activeColor);
         this.querySelector('.cp-app').classList.remove('cp-app-show');
-        this.dispatchEvent(cpColorPickedEvent);
+        this.dispatchEvent(this.#cpColorPickedEvent);
       });
 
       document.addEventListener('mousedown', (e) => {
@@ -1024,16 +1105,17 @@ if (typeof ColorPicker === 'undefined') {
 }
 
 if (typeof RangeSlider === 'undefined') {
-  let sliderPercents = {
-    x: null,
-    y: null
-  };
-  let dragElementEvent = new CustomEvent('input', {
-    bubbles: true,
-    detail: sliderPercents
-  });
-
   class RangeSlider extends HTMLElement {
+    #sliderPercents = {
+      x: null,
+      y: null
+    };
+
+    #dragElementEvent = new CustomEvent('input', {
+      bubbles: true,
+      detail: this.#sliderPercents
+    });
+
     #shiftX;
     #shiftY;
     #X;
@@ -1199,11 +1281,11 @@ if (typeof RangeSlider === 'undefined') {
             this.#dragger.style.top = `calc(${this.#percentY}% - ${this.#elementBounds.height / 2}px)`;
             this.#dragger.style.right = 'auto';
             this.#dragger.style.bottom = 'auto';
-            sliderPercents.x = this.#percentX;
-            sliderPercents.y = this.#percentY;
+            this.#sliderPercents.x = this.#percentX;
+            this.#sliderPercents.y = this.#percentY;
             this.#privateValue.x = this.#percentX;
             this.#privateValue.y = this.#percentY;
-            this.dispatchEvent(dragElementEvent);
+            this.dispatchEvent(this.#dragElementEvent);
           }
         }
 
