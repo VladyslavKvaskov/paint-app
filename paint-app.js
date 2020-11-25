@@ -279,8 +279,22 @@ if (typeof DrawingApp === 'undefined') {
       }
     }
 
-    toDataURL() {
-      return this.#canvas.toDataURL();
+    toDataURL(type = 'image/png', encoderOptions = 1.0) {
+      if (type !== 'image/png') {
+        // change non-opaque pixels to white
+        this.#tmp = this.#ctx.getImageData(0, 0, this.#canvas.width, this.#canvas.height);
+        this.#tmp2 = this.#tmp.data;
+        for (let i = 0; i < this.#tmp2.length; i += 4) {
+          if (this.#tmp2[i + 3] < 255) {
+            this.#tmp2[i] = 255 - this.#tmp2[i];
+            this.#tmp2[i + 1] = 255 - this.#tmp2[i + 1];
+            this.#tmp2[i + 2] = 255 - this.#tmp2[i + 2];
+            this.#tmp2[i + 3] = 255 - this.#tmp2[i + 3];
+          }
+        }
+        this.#ctx.putImageData(this.#tmp, 0, 0);
+      }
+      return this.#canvas.toDataURL(type, encoderOptions);
     }
 
     connectedCallback() {
