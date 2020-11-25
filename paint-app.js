@@ -19,7 +19,7 @@ if (typeof drawingAppCss === 'undefined') {
       background: #fff;
       width: 700px;
       max-width: 100%;
-      box-shadow: 0 0 36px rgba(0,0,0,0.1), 0 0 100px #999;;
+      /*box-shadow: 0 0 36px rgba(0,0,0,0.1), 0 0 100px #999;*/
       padding: 10px;
       box-sizing: border-box;
       border-radius: 7px;
@@ -214,10 +214,10 @@ if (typeof DrawingApp === 'undefined') {
       this.#importFile = document.createElement('input');
       this.#importFile.type = 'file';
 
-      this.#onresize = async () => {
+      this.#onresize = async (ms = 0, bypass = false) => {
         clearTimeout(this.#resizeTimeout);
         this.#resizeTimeout = setTimeout(async () => {
-          if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
+          if ((this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) || bypass) {
             this.#ctx.clearRect(0, 0, 1000000, 1000000);
             this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
             this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
@@ -227,7 +227,11 @@ if (typeof DrawingApp === 'undefined') {
             this.#strokeSize = this.#strokeSizePX;
 
             this.#ctx.scale(this.#scaleX, this.#scaleY);
-            this.drawFromGcode(this.#gCode.join(''));
+            if (!isNaN(ms) && ms > 0) {
+              this.drawFromGcode(this.#gCode.join(''), ms);
+            } else {
+              this.drawFromGcode(this.#gCode.join(''));
+            }
           }
         }, 300);
       }
@@ -249,18 +253,18 @@ if (typeof DrawingApp === 'undefined') {
           this.#com2 = this.#command[1].split(' ');
           this.#com3 = this.#command[2].split(' ');
 
-          if (this.#com1[0] !== 'EMPTY') {
-            this.#ctx.lineWidth = (this.#com2[0] === 'EMPTY') ? 0 : Number(this.#com2[0]) + Number(this.#com1[0]);
+          if (this.#com1[0] !== 'E') {
+            this.#ctx.lineWidth = (this.#com2[0] === 'E') ? 0 : Number(this.#com2[0]) + Number(this.#com1[0]);
             this.#ctx.lineCap = 'round';
             this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
             this.#ctx.strokeStyle = this.#com1[1];
             this.#ctx.stroke();
-            if (this.#com2[0] === 'EMPTY') {
+            if (this.#com2[0] === 'E') {
               this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
             }
           }
 
-          if (this.#com2[0] !== 'EMPTY') {
+          if (this.#com2[0] !== 'E') {
             this.#ctx.lineWidth = Number(this.#com2[0]);
             this.#ctx.lineCap = 'round';
             this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
@@ -273,6 +277,10 @@ if (typeof DrawingApp === 'undefined') {
           await this.sleep(ms);
         }
       }
+    }
+
+    toDataURL() {
+      return this.#canvas.toDataURL();
     }
 
     connectedCallback() {
@@ -299,7 +307,7 @@ if (typeof DrawingApp === 'undefined') {
             <button class="da-export-bttn">Export</button>
             <button class="da-import-bttn">Import</button>
             <button class="da-clear-bttn">Clear</button>
-            <button class="da-save-bttn">Save</button>
+            <button class="da-save-bttn">Download</button>
           </div>
 
           <div class="da-canvas-holder">
@@ -371,7 +379,8 @@ if (typeof DrawingApp === 'undefined') {
             this.#strokeSize = this.#strokeSizePX;
             this.#ctx.scale(this.#scaleX, this.#scaleY);
           }
-          this.drawFromGcode(data, 5);
+          // this.#tmp = 300 / this.#tmp.length;
+          this.drawFromGcode(data);
           data = data.split('\n').map((a) => a + '\n');
           data.pop();
           this.#gCode = data;
@@ -412,6 +421,7 @@ if (typeof DrawingApp === 'undefined') {
 
       this.#canvasOriginalWidth = this.#canvas.width;
       this.#canvasOriginalHeight = this.#canvas.height;
+      this.#onresize(0, true);
 
       this.#brushSizeInput.addEventListener('input', () => {
         if (!isNaN(this.#brushSizeInput.value)) {
@@ -548,7 +558,7 @@ if (typeof DrawingApp === 'undefined') {
               this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
             }
 
-            this.#tmp = `${this.#strokeSize > 0 || this.#brushSize > 0 ? `${this.#strokeSize > 0 ? `${this.#brushSize + this.#strokeSize} ${this.#colorPickerStroke.value.replace(/ /g, '')}`:'EMPTY'}  ${this.#brushSize > 0 ? `${this.#brushSize} ${this.#colorPickerFill.value.replace(/ /g, '')}`: 'EMPTY'}  ${this.#pageXY.x} ${this.#pageXY.y} ${this.#canvas.width} ${this.#canvas.height}\n` : ''}`;
+            this.#tmp = `${this.#strokeSize > 0 || this.#brushSize > 0 ? `${this.#strokeSize > 0 ? `${this.#brushSize + this.#strokeSize} ${this.#colorPickerStroke.value.replace(/ /g, '')}`:'E'}  ${this.#brushSize > 0 ? `${this.#brushSize} ${this.#colorPickerFill.value.replace(/ /g, '')}`: 'E'}  ${this.#pageXY.x} ${this.#pageXY.y} ${this.#canvas.width} ${this.#canvas.height}\n` : ''}`;
             if (this.#tmp !== '') {
               this.#gCode.push(this.#tmp);
             }
@@ -905,9 +915,8 @@ if (typeof ColorPicker === 'undefined') {
         [100 / 6 * 5, [255, 0, 255]],
         [100 / 6 * 6, [255, 0, 0]],
       ];
-    }
 
-    connectedCallback() {
+
       colorPickerInitCounter++;
       this.#cpId = colorPickerInitCounter;
 
@@ -1089,6 +1098,10 @@ if (typeof ColorPicker === 'undefined') {
           this.querySelector('.cp-app').classList.remove('cp-app-show');
         }
       });
+    }
+
+    connectedCallback() {
+
     }
   }
   customElements.define('color-picker', ColorPicker);
