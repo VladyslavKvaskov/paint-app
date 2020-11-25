@@ -394,7 +394,7 @@ if (typeof DrawingApp === 'undefined') {
             this.#ctx.scale(this.#scaleX, this.#scaleY);
           }
           // this.#tmp = 300 / this.#tmp.length;
-          this.drawFromGcode(data);
+          this.drawFromGcode(data, 1);
           data = data.split('\n').map((a) => a + '\n');
           data.pop();
           this.#gCode = data;
