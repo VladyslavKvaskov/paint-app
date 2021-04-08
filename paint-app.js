@@ -1,9 +1,9 @@
 const drawingAppElName = 'paint-app';
 
 if (typeof drawingAppCss === 'undefined') {
-  const drawingAppCss = document.createElement('style');
+    const drawingAppCss = document.createElement('style');
 
-  drawingAppCss.textContent = `
+    drawingAppCss.textContent = `
     body{
       margin: 0;
       padding: 0;
@@ -120,187 +120,181 @@ if (typeof drawingAppCss === 'undefined') {
       box-shadow: 0 0 0 1px #fff, 0 0 0 3px #ff3547;
     }
   `;
-  document.head.appendChild(drawingAppCss);
+    document.head.appendChild(drawingAppCss);
 }
 
 if (typeof DrawingApp === 'undefined') {
-  let drawingAppId = 0;
+    let drawingAppId = 0;
 
-  class DrawingApp extends HTMLElement {
-    #wrapper;
-    #canvasHolder;
-    #canvas;
-    #ctx;
-    #setCanvas;
-    #canDraw = false;
-    #brushInit;
-    #brushMove;
-    #pageXY;
-    #colorPickerFill;
-    #colorPickerStroke;
-    #canvasBounds;
-    #brushSize = 1;
-    #brushSizePX = this.#brushSize;
-    #strokeSize = 0;
-    #strokeSizePX = this.#strokeSize;
-    #canvasImage;
-    #onresize;
-    #scaleX = 1;
-    #scaleY = 1;
-    #drawCommands = [];
-    #canvasOriginalWidth;
-    #canvasOriginalHeight;
-    #command;
-    #resizeTimeout;
-    #brushSizeController;
-    #strokeSizeController;
-    #brushSizeInput;
-    #strokeSizeInput;
-    #recFunc;
-    #animFunc;
-    #exportBttn;
-    #importBttn;
-    #clearBttn;
-    #saveBttn;
-    #d;
-    #index;
-    #id;
-    #downloadAnchor;
-    #importFile;
-    #blob;
-    #exportData;
-    #gCode = [];
-    #outofCanvas = false;
-    #tmp;
-    #tmp2;
-    #tmp3;
-    #tmp4;
-    #maxX;
-    #maxY;
-    #brushXY = {
-      x: null,
-      y: null
-    };
-    #com1;
-    #com2;
-    #com3;
-    #brushType = 'line';
-    #arr;
-    #mime;
-    #bstr;
-    #n;
-    #u8arr;
-    #dataURLtoFile = (dataurl, filename) => {
-      this.#arr = dataurl.split(','),
-        this.#mime = this.#arr[0].match(/:(.*?);/)[1],
-        this.#bstr = atob(this.#arr[1]),
-        this.#n = this.#bstr.length,
-        this.#u8arr = new Uint8Array(this.#n);
+    class DrawingApp extends HTMLElement {
+        #wrapper;
+        #canvasHolder;
+        #canvas;
+        #ctx;
+        #setCanvas;
+        #canDraw = false;
+        #brushInit;
+        #brushMove;
+        #pageXY;
+        #colorPickerFill;
+        #colorPickerStroke;
+        #canvasBounds;
+        #brushSize = 1;
+        #brushSizePX = this.#brushSize;
+        #strokeSize = 0;
+        #strokeSizePX = this.#strokeSize;
+        #canvasImage;
+        #onresize;
+        #scaleX = 1;
+        #scaleY = 1;
+        #drawCommands = [];
+        #canvasOriginalWidth;
+        #canvasOriginalHeight;
+        #command;
+        #resizeTimeout;
+        #brushSizeController;
+        #strokeSizeController;
+        #brushSizeInput;
+        #strokeSizeInput;
+        #recFunc;
+        #animFunc;
+        #exportBttn;
+        #importBttn;
+        #clearBttn;
+        #saveBttn;
+        #d;
+        #index;
+        #id;
+        #downloadAnchor;
+        #importFile;
+        #blob;
+        #exportData;
+        #gCode = [];
+        #outofCanvas = false;
+        #tmp;
+        #tmp2;
+        #tmp3;
+        #tmp4;
+        #maxX;
+        #maxY;
+        #brushXY = {
+            x: null,
+            y: null,
+        };
+        #com1;
+        #com2;
+        #com3;
+        #brushType = 'line';
+        #arr;
+        #mime;
+        #bstr;
+        #n;
+        #u8arr;
+        #dataURLtoFile = (dataurl, filename) => {
+            (this.#arr = dataurl.split(',')), (this.#mime = this.#arr[0].match(/:(.*?);/)[1]), (this.#bstr = atob(this.#arr[1])), (this.#n = this.#bstr.length), (this.#u8arr = new Uint8Array(this.#n));
 
-      while (this.#n--) {
-        this.#u8arr[this.#n] = this.#bstr.charCodeAt(this.#n);
-      }
-      return new File([this.#u8arr], filename, {
-        type: this.#mime
-      });
-    }
-
-    constructor() {
-      super();
-
-      drawingAppId++;
-      this.#id = drawingAppId;
-
-      this.#importFile = document.createElement('input');
-      this.#importFile.type = 'file';
-
-      this.#onresize = async (ms = 0, bypass = false) => {
-        clearTimeout(this.#resizeTimeout);
-        this.#resizeTimeout = setTimeout(async () => {
-          if ((this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) || bypass) {
-            this.#ctx.clearRect(0, 0, 1000000, 1000000);
-            this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
-            this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
-            // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
-            // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
-            this.#brushSize = this.#brushSizePX;
-            this.#strokeSize = this.#strokeSizePX;
-
-            this.#ctx.scale(this.#scaleX, this.#scaleY);
-            if (!isNaN(ms) && ms > 0) {
-              this.drawFromGcode(this.#gCode.join(''), ms);
-            } else {
-              this.drawFromGcode(this.#gCode.join(''));
+            while (this.#n--) {
+                this.#u8arr[this.#n] = this.#bstr.charCodeAt(this.#n);
             }
-          }
-        }, 300);
-      }
-    }
+            return new File([this.#u8arr], filename, {
+                type: this.#mime,
+            });
+        };
 
-    sleep(ms = 50) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
+        constructor() {
+            super();
 
-    async drawFromGcode(data, ms = 0) {
-      for (this.#d of data.split('\n')) {
-        if (this.#d === 'BEGIN') {
-          this.#ctx.beginPath();
-        } else if (this.#d === '') {
-          break;
-        } else {
-          this.#command = this.#d.split('  ');
-          this.#com1 = this.#command[0].split(' ');
-          this.#com2 = this.#command[1].split(' ');
-          this.#com3 = this.#command[2].split(' ');
+            drawingAppId++;
+            this.#id = drawingAppId;
 
-          if (this.#com1[0] !== 'E') {
-            this.#ctx.lineWidth = (this.#com2[0] === 'E') ? 0 : Number(this.#com2[0]) + Number(this.#com1[0]);
-            this.#ctx.lineCap = 'round';
-            this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
-            this.#ctx.strokeStyle = this.#com1[1];
-            this.#ctx.stroke();
-            if (this.#com2[0] === 'E') {
-              this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
+            this.#importFile = document.createElement('input');
+            this.#importFile.type = 'file';
+
+            this.#onresize = async (ms = 0, bypass = false) => {
+                clearTimeout(this.#resizeTimeout);
+                this.#resizeTimeout = setTimeout(async () => {
+                    if ((this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) || bypass) {
+                        this.#ctx.clearRect(0, 0, 1000000, 1000000);
+                        this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
+                        this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
+                        // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
+                        // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
+                        this.#brushSize = this.#brushSizePX;
+                        this.#strokeSize = this.#strokeSizePX;
+
+                        this.#ctx.scale(this.#scaleX, this.#scaleY);
+                        if (!isNaN(ms) && ms > 0) {
+                            this.drawFromGcode(this.#gCode.join(''), ms);
+                        } else {
+                            this.drawFromGcode(this.#gCode.join(''));
+                        }
+                    }
+                }, 300);
+            };
+        }
+
+        sleep(ms = 50) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        async drawFromGcode(data, ms = 0) {
+            for (this.#d of data.split('\n')) {
+                if (this.#d === 'BEGIN') {
+                    this.#ctx.beginPath();
+                } else if (this.#d === '') {
+                    break;
+                } else {
+                    this.#command = this.#d.split('  ');
+                    this.#com1 = this.#command[0].split(' ');
+                    this.#com2 = this.#command[1].split(' ');
+                    this.#com3 = this.#command[2].split(' ');
+
+                    if (this.#com1[0] !== 'E') {
+                        this.#ctx.lineWidth = this.#com2[0] === 'E' ? 0 : Number(this.#com2[0]) + Number(this.#com1[0]);
+                        this.#ctx.lineCap = 'round';
+                        this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
+                        this.#ctx.strokeStyle = this.#com1[1];
+                        this.#ctx.stroke();
+                        if (this.#com2[0] === 'E') {
+                            this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
+                        }
+                    }
+
+                    if (this.#com2[0] !== 'E') {
+                        this.#ctx.lineWidth = Number(this.#com2[0]);
+                        this.#ctx.lineCap = 'round';
+                        this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
+                        this.#ctx.strokeStyle = this.#com2[1];
+                        this.#ctx.stroke();
+                        this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
+                    }
+                }
+                if (!isNaN(ms) && ms > 0) {
+                    await this.sleep(ms);
+                }
             }
-          }
-
-          if (this.#com2[0] !== 'E') {
-            this.#ctx.lineWidth = Number(this.#com2[0]);
-            this.#ctx.lineCap = 'round';
-            this.#ctx.lineTo(Number(this.#com3[0]), Number(this.#com3[1]));
-            this.#ctx.strokeStyle = this.#com2[1];
-            this.#ctx.stroke();
-            this.#ctx.moveTo(Number(this.#com3[0]), Number(this.#com3[1]));
-          }
         }
-        if (!isNaN(ms) && ms > 0) {
-          await this.sleep(ms);
+
+        toDataURL(type = 'image/png', encoderOptions = 1.0) {
+            if (type !== 'image/png') {
+                // change non-opaque pixels to white
+                this.#tmp = this.#ctx.getImageData(0, 0, this.#canvas.width, this.#canvas.height);
+                this.#tmp2 = this.#tmp.data;
+                for (let i = 0; i < this.#tmp2.length; i += 4) {
+                    if (this.#tmp2[i + 3] < 255) {
+                        this.#tmp2[i] = 255 - this.#tmp2[i];
+                        this.#tmp2[i + 1] = 255 - this.#tmp2[i + 1];
+                        this.#tmp2[i + 2] = 255 - this.#tmp2[i + 2];
+                        this.#tmp2[i + 3] = 255 - this.#tmp2[i + 3];
+                    }
+                }
+                this.#ctx.putImageData(this.#tmp, 0, 0);
+            }
+            return this.#canvas.toDataURL(type, encoderOptions);
         }
-      }
-    }
 
-    toDataURL(type = 'image/png', encoderOptions = 1.0) {
-      if (type !== 'image/png') {
-        // change non-opaque pixels to white
-        this.#tmp = this.#ctx.getImageData(0, 0, this.#canvas.width, this.#canvas.height);
-        this.#tmp2 = this.#tmp.data;
-        for (let i = 0; i < this.#tmp2.length; i += 4) {
-          if (this.#tmp2[i + 3] < 255) {
-            this.#tmp2[i] = 255 - this.#tmp2[i];
-            this.#tmp2[i + 1] = 255 - this.#tmp2[i + 1];
-            this.#tmp2[i + 2] = 255 - this.#tmp2[i + 2];
-            this.#tmp2[i + 3] = 255 - this.#tmp2[i + 3];
-          }
-        }
-        this.#ctx.putImageData(this.#tmp, 0, 0);
-      }
-      return this.#canvas.toDataURL(type, encoderOptions);
-    }
-
-    connectedCallback() {
-
-
-      this.innerHTML = `
+        connectedCallback() {
+            this.innerHTML = `
         <div class="da-wrappaer">
           <div class="da-controllers">
             <div class="da-fill-color">
@@ -330,347 +324,365 @@ if (typeof DrawingApp === 'undefined') {
         </div>
       `;
 
-      this.#wrapper = this.querySelector('.da-wrapper');
-      this.#canvasHolder = this.querySelector('.da-canvas-holder');
-      this.#canvas = this.querySelector('canvas');
-      this.#colorPickerFill = this.querySelector('color-picker.da-cp-fill');
-      this.#colorPickerStroke = this.querySelector('color-picker.da-cp-stroke');
-      this.#brushSizeController = this.querySelector('.da-fill-size');
-      this.#strokeSizeController = this.querySelector('.da-stroke-size');
-      this.#brushSizeInput = this.querySelector('.da-fill-size-input');
-      this.#strokeSizeInput = this.querySelector('.da-stroke-size-input');
-      this.#exportBttn = this.querySelector('.da-export-bttn');
-      this.#importBttn = this.querySelector('.da-import-bttn');
-      this.#clearBttn = this.querySelector('.da-clear-bttn');
-      this.#saveBttn = this.querySelector('.da-save-bttn');
+            this.#wrapper = this.querySelector('.da-wrapper');
+            this.#canvasHolder = this.querySelector('.da-canvas-holder');
+            this.#canvas = this.querySelector('canvas');
+            this.#colorPickerFill = this.querySelector('color-picker.da-cp-fill');
+            this.#colorPickerStroke = this.querySelector('color-picker.da-cp-stroke');
+            this.#brushSizeController = this.querySelector('.da-fill-size');
+            this.#strokeSizeController = this.querySelector('.da-stroke-size');
+            this.#brushSizeInput = this.querySelector('.da-fill-size-input');
+            this.#strokeSizeInput = this.querySelector('.da-stroke-size-input');
+            this.#exportBttn = this.querySelector('.da-export-bttn');
+            this.#importBttn = this.querySelector('.da-import-bttn');
+            this.#clearBttn = this.querySelector('.da-clear-bttn');
+            this.#saveBttn = this.querySelector('.da-save-bttn');
 
-      this.#ctx = this.#canvas.getContext('2d');
+            this.#ctx = this.#canvas.getContext('2d');
 
-      this.#exportBttn.addEventListener('click', () => {
-        this.#downloadAnchor = document.createElement('a');
-        this.#downloadAnchor.setAttribute('download', 'download.txt');
-        this.#blob = new Blob(this.#gCode, {
-          type: 'text/plain'
-        });
-        this.#downloadAnchor.href = URL.createObjectURL(this.#blob);;
-        document.body.appendChild(this.#downloadAnchor);
-        this.#downloadAnchor.click();
-        this.#downloadAnchor.remove();
-      });
+            this.#exportBttn.addEventListener('click', () => {
+                this.#downloadAnchor = document.createElement('a');
+                this.#downloadAnchor.setAttribute('download', 'download.txt');
+                this.#blob = new Blob(this.#gCode, {
+                    type: 'text/plain',
+                });
+                this.#downloadAnchor.href = URL.createObjectURL(this.#blob);
+                document.body.appendChild(this.#downloadAnchor);
+                this.#downloadAnchor.click();
+                this.#downloadAnchor.remove();
+            });
 
-      this.#importFile.addEventListener('change', (e) => {
-        fetch(URL.createObjectURL(e.target.files[0])).then(r => r.text()).then(data => {
+            this.#importFile.addEventListener('change', (e) => {
+                fetch(URL.createObjectURL(e.target.files[0]))
+                    .then((r) => r.text())
+                    .then((data) => {
+                        this.#maxX = 0;
+                        this.#maxY = 0;
 
-          this.#maxX = 0;
-          this.#maxY = 0;
+                        this.#tmp = data.split('\n');
+                        for (this.#tmp2 of this.#tmp) {
+                            if (this.#tmp2 !== 'BEGIN' && this.#tmp2 != '') {
+                                this.#tmp3 = this.#tmp2;
+                                this.#tmp3 = this.#tmp3.split('  ');
+                                this.#tmp3 = this.#tmp3[2].split(' ');
 
-          this.#tmp = data.split('\n');
-          for (this.#tmp2 of this.#tmp) {
-            if (this.#tmp2 !== 'BEGIN' && this.#tmp2 != '') {
-              this.#tmp3 = this.#tmp2;
-              this.#tmp3 = this.#tmp3.split('  ');
-              this.#tmp3 = this.#tmp3[2].split(' ');
+                                if (this.#maxX < Number(this.#tmp3[2])) {
+                                    this.#maxX = Number(this.#tmp3[2]);
+                                }
+                                if (this.#maxY < Number(this.#tmp3[3])) {
+                                    this.#maxY = Number(this.#tmp3[3]);
+                                }
+                            }
+                        }
+                        this.#canvasOriginalWidth = this.#maxX;
+                        this.#canvasOriginalHeight = this.#maxY;
 
-              if (this.#maxX < Number(this.#tmp3[2])) {
-                this.#maxX = Number(this.#tmp3[2]);
-              }
-              if (this.#maxY < Number(this.#tmp3[3])) {
-                this.#maxY = Number(this.#tmp3[3]);
-              }
-            }
-          }
-          this.#canvasOriginalWidth = this.#maxX;
-          this.#canvasOriginalHeight = this.#maxY;
+                        this.#ctx.clearRect(0, 0, 1000000, 1000000);
 
-          this.#ctx.clearRect(0, 0, 1000000, 1000000);
+                        if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
+                            this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
+                            this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
+                            // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
+                            // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
+                            this.#brushSize = this.#brushSizePX;
+                            this.#strokeSize = this.#strokeSizePX;
+                            this.#ctx.scale(this.#scaleX, this.#scaleY);
+                        }
+                        // this.#tmp = 300 / this.#tmp.length;
+                        this.drawFromGcode(data);
+                        data = data.split('\n').map((a) => a + '\n');
+                        data.pop();
+                        this.#gCode = data;
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                    });
 
-          if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
-            this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
-            this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
-            // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
-            // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
-            this.#brushSize = this.#brushSizePX;
-            this.#strokeSize = this.#strokeSizePX;
-            this.#ctx.scale(this.#scaleX, this.#scaleY);
-          }
-          // this.#tmp = 300 / this.#tmp.length;
-          this.drawFromGcode(data, 1);
-          data = data.split('\n').map((a) => a + '\n');
-          data.pop();
-          this.#gCode = data;
-        }).catch(err => {
-          console.log(err);
-        });
+                this.#importFile.value = null;
+            });
 
-        this.#importFile.value = null;
-      });
+            this.#importBttn.addEventListener('click', () => {
+                this.#importFile.click();
+            });
 
-      this.#importBttn.addEventListener('click', () => {
-        this.#importFile.click();
-      });
+            this.#clearBttn.addEventListener('click', () => {
+                this.#ctx.clearRect(0, 0, 1000000, 1000000);
+                this.#gCode = [];
+            });
 
-      this.#clearBttn.addEventListener('click', () => {
-        this.#ctx.clearRect(0, 0, 1000000, 1000000);
-        this.#gCode = [];
-      });
+            this.#saveBttn.addEventListener('click', () => {
+                this.#downloadAnchor = document.createElement('a');
+                this.#downloadAnchor.setAttribute('download', 'data.png');
+                this.#downloadAnchor.href = this.#canvas.toDataURL();
+                document.body.appendChild(this.#downloadAnchor);
+                this.#downloadAnchor.click();
+                this.#downloadAnchor.remove();
+            });
 
-      this.#saveBttn.addEventListener('click', () => {
-        this.#downloadAnchor = document.createElement('a');
-        this.#downloadAnchor.setAttribute('download', 'data.png');
-        this.#downloadAnchor.href = this.#canvas.toDataURL();
-        document.body.appendChild(this.#downloadAnchor);
-        this.#downloadAnchor.click();
-        this.#downloadAnchor.remove();
-      });
+            this.#setCanvas = () => {
+                if (this.#canvas.width !== this.#canvasHolder.offsetWidth) {
+                    this.#canvas.width = this.#canvasHolder.offsetWidth;
+                    this.#canvas.height = this.#canvasHolder.offsetWidth / 2;
+                    this.#onresize();
+                }
+            };
 
-      this.#setCanvas = () => {
-        if (this.#canvas.width !== this.#canvasHolder.offsetWidth) {
-          this.#canvas.width = this.#canvasHolder.offsetWidth;
-          this.#canvas.height = this.#canvasHolder.offsetWidth / 2;
-          this.#onresize();
+            this.#setCanvas();
+
+            this.#canvasOriginalWidth = this.#canvas.width;
+            this.#canvasOriginalHeight = this.#canvas.height;
+            this.#onresize(0, true);
+
+            this.#brushSizeInput.addEventListener('input', () => {
+                if (!isNaN(this.#brushSizeInput.value)) {
+                    if (this.#brushSizeInput.value > 100) {
+                        this.#brushSizeInput.value = 100;
+                    } else if (this.#brushSizeInput.value < 0) {
+                        this.#brushSizeInput.value = 0;
+                    }
+                } else {
+                    this.#brushSizeInput.value = 0;
+                }
+
+                this.#brushSizeController.value = {
+                    x: this.#brushSizeInput.value,
+                    y: null,
+                };
+
+                // this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+                this.#brushSize = parseInt(this.#brushSizeController.value.x);
+                this.#brushSizePX = this.#brushSize;
+            });
+
+            this.#strokeSizeInput.addEventListener('input', () => {
+                if (!isNaN(this.#strokeSizeInput.value)) {
+                    if (this.#strokeSizeInput.value > 100) {
+                        this.#strokeSizeInput.value = 100;
+                    } else if (this.#strokeSizeInput.value < 0) {
+                        this.#strokeSizeInput.value = 0;
+                    }
+                } else {
+                    this.#strokeSizeInput.value = 0;
+                }
+
+                this.#strokeSizeController.value = {
+                    x: this.#strokeSizeInput.value,
+                    y: null,
+                };
+
+                // this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+                this.#strokeSize = parseInt(this.#strokeSizeController.value.x);
+                this.#strokeSizePX = this.#strokeSize;
+            });
+
+            this.#brushSizeController.value = {
+                x: this.#brushSize,
+                y: null,
+            };
+
+            this.#brushSizeController.addEventListener('input', (e) => {
+                this.#brushSizeInput.value = parseInt(this.#brushSizeController.value.x);
+                // this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+                this.#brushSize = parseInt(this.#brushSizeController.value.x);
+                this.#brushSizePX = this.#brushSize;
+            });
+
+            this.#strokeSizeController.value = {
+                x: this.#strokeSize,
+                y: null,
+            };
+
+            this.#strokeSizeController.addEventListener('input', (e) => {
+                this.#strokeSizeInput.value = parseInt(this.#strokeSizeController.value.x);
+                // this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
+                this.#strokeSize = parseInt(this.#strokeSizeController.value.x);
+                this.#strokeSizePX = this.#strokeSize;
+            });
+
+            window.addEventListener('resize', () => {
+                this.#setCanvas();
+            });
+
+            this.#brushInit = (e) => {
+                if (this.#brushType === 'line') {
+                    this.#ctx.beginPath();
+                }
+
+                this.#gCode.push('BEGIN\n');
+                this.#canDraw = true;
+            };
+
+            this.#brushMove = (e) => {
+                if (this.#canDraw) {
+                    e.preventDefault();
+                    this.#canvasBounds = this.#canvas.getBoundingClientRect();
+
+                    this.#pageXY = {};
+                    if (e.touches) {
+                        this.#pageXY.x = e.touches[0].clientX * this.#scaleX - this.#canvasBounds.left / this.#scaleX;
+                        this.#pageXY.y = e.touches[0].clientY * this.#scaleY - this.#canvasBounds.top / this.#scaleY;
+                    } else {
+                        this.#pageXY.x = e.clientX / this.#scaleX - this.#canvasBounds.left / this.#scaleX;
+                        this.#pageXY.y = e.clientY / this.#scaleY - this.#canvasBounds.top / this.#scaleY;
+                    }
+
+                    this.#command = null;
+
+                    if (this.#brushType === 'circle') {
+                        if (this.#strokeSize > 0) {
+                            this.#ctx.beginPath();
+                            this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize + this.#strokeSize, 0, 2 * Math.PI, false);
+                            if (this.#strokeSize > 0 && this.#brushSize > 0) {
+                                this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize, 0, 2 * Math.PI, true);
+                            }
+                            this.#ctx.fillStyle = this.#colorPickerStroke.value;
+                            this.#ctx.fill();
+                        }
+
+                        if (this.#brushSize > 0) {
+                            this.#ctx.beginPath();
+                            this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize, 0, 2 * Math.PI, false);
+                            this.#ctx.fillStyle = this.#colorPickerFill.value;
+                            this.#ctx.fill();
+                        }
+
+                        this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x} ${this.#pageXY.y} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n` : ''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x} ${this.#pageXY.y} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
+                    } else {
+                        if (this.#strokeSize > 0) {
+                            this.#ctx.lineWidth = this.#brushSize + this.#strokeSize;
+                            this.#ctx.lineCap = 'round';
+                            this.#ctx.lineTo(this.#pageXY.x, this.#pageXY.y);
+                            this.#ctx.strokeStyle = this.#colorPickerStroke.value;
+                            this.#ctx.stroke();
+                            if (this.#brushSize <= 0) {
+                                this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
+                            }
+                        }
+
+                        if (this.#brushSize > 0) {
+                            this.#ctx.lineWidth = this.#brushSize;
+                            this.#ctx.lineCap = 'round';
+                            this.#ctx.lineTo(this.#pageXY.x, this.#pageXY.y);
+                            this.#ctx.strokeStyle = this.#colorPickerFill.value;
+                            this.#ctx.stroke();
+                            this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
+                        }
+
+                        this.#tmp = `${this.#strokeSize > 0 || this.#brushSize > 0 ? `${this.#strokeSize > 0 ? `${this.#brushSize + this.#strokeSize} ${this.#colorPickerStroke.value.replace(/ /g, '')}` : 'E'}  ${this.#brushSize > 0 ? `${this.#brushSize} ${this.#colorPickerFill.value.replace(/ /g, '')}` : 'E'}  ${this.#pageXY.x} ${this.#pageXY.y} ${this.#canvas.width} ${this.#canvas.height}\n` : ''}`;
+                        if (this.#tmp !== '') {
+                            this.#gCode.push(this.#tmp);
+                        }
+                    }
+                }
+            };
+
+            this.#canvas.addEventListener('mousedown', (e) => {
+                this.#brushInit(e);
+                this.#brushMove(e);
+            });
+
+            document.addEventListener('mousedown', (e) => {
+                if (this.#brushType === 'line') {
+                    this.#ctx.beginPath();
+                }
+
+                this.#canDraw = true;
+            });
+
+            this.#canvas.addEventListener(
+                'touchstart',
+                (e) => {
+                    this.#brushInit(e);
+                    this.#brushMove(e);
+                },
+                {
+                    passive: false,
+                }
+            );
+
+            document.addEventListener(
+                'touchstart',
+                (e) => {
+                    if (this.#brushType === 'line') {
+                        this.#ctx.beginPath();
+                    }
+
+                    this.#canDraw = true;
+                },
+                {
+                    passive: false,
+                }
+            );
+
+            document.addEventListener('mousemove', (e) => {
+                this.#brushMove(e);
+            });
+
+            document.addEventListener(
+                'touchmove',
+                (e) => {
+                    this.#brushMove(e);
+                },
+                {
+                    passive: false,
+                }
+            );
+
+            document.addEventListener('mousemove', (e) => {
+                if (e.target === this.#canvas) {
+                    this.#outofCanvas = false;
+                } else {
+                    if (!this.#outofCanvas && this.#canDraw) {
+                        this.#ctx.beginPath();
+                    }
+                    this.#outofCanvas = true;
+                }
+            });
+
+            document.addEventListener(
+                'touchmove',
+                (e) => {
+                    if (e.target === this.#canvas) {
+                        this.#outofCanvas = false;
+                    } else {
+                        if (!this.#outofCanvas && this.#canDraw) {
+                            this.#ctx.beginPath();
+                        }
+                        this.#outofCanvas = true;
+                    }
+                },
+                {
+                    passive: false,
+                }
+            );
+
+            document.addEventListener('mouseup', () => {
+                this.#canDraw = false;
+                if (this.#gCode.length === 1) {
+                    this.#gCode.pop();
+                }
+            });
+
+            document.addEventListener(
+                'touchend',
+                () => {
+                    this.#canDraw = false;
+                    if (this.#gCode.length === 1) {
+                        this.#gCode.pop();
+                    }
+                },
+                {
+                    passive: false,
+                }
+            );
         }
-      }
-
-      this.#setCanvas();
-
-      this.#canvasOriginalWidth = this.#canvas.width;
-      this.#canvasOriginalHeight = this.#canvas.height;
-      this.#onresize(0, true);
-
-      this.#brushSizeInput.addEventListener('input', () => {
-        if (!isNaN(this.#brushSizeInput.value)) {
-          if (this.#brushSizeInput.value > 100) {
-            this.#brushSizeInput.value = 100;
-          } else if (this.#brushSizeInput.value < 0) {
-            this.#brushSizeInput.value = 0;
-          }
-        } else {
-          this.#brushSizeInput.value = 0;
-        }
-
-        this.#brushSizeController.value = {
-          x: this.#brushSizeInput.value,
-          y: null
-        };
-
-        // this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
-        this.#brushSize = parseInt(this.#brushSizeController.value.x);
-        this.#brushSizePX = this.#brushSize;
-      });
-
-      this.#strokeSizeInput.addEventListener('input', () => {
-        if (!isNaN(this.#strokeSizeInput.value)) {
-          if (this.#strokeSizeInput.value > 100) {
-            this.#strokeSizeInput.value = 100;
-          } else if (this.#strokeSizeInput.value < 0) {
-            this.#strokeSizeInput.value = 0;
-          }
-        } else {
-          this.#strokeSizeInput.value = 0;
-        }
-
-        this.#strokeSizeController.value = {
-          x: this.#strokeSizeInput.value,
-          y: null
-        };
-
-        // this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
-        this.#strokeSize = parseInt(this.#strokeSizeController.value.x);
-        this.#strokeSizePX = this.#strokeSize;
-      });
-
-      this.#brushSizeController.value = {
-        x: this.#brushSize,
-        y: null
-      };
-
-      this.#brushSizeController.addEventListener('input', (e) => {
-        this.#brushSizeInput.value = parseInt(this.#brushSizeController.value.x);
-        // this.#brushSize = parseInt(this.#brushSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
-        this.#brushSize = parseInt(this.#brushSizeController.value.x);
-        this.#brushSizePX = this.#brushSize;
-      });
-
-      this.#strokeSizeController.value = {
-        x: this.#strokeSize,
-        y: null
-      };
-
-      this.#strokeSizeController.addEventListener('input', (e) => {
-        this.#strokeSizeInput.value = parseInt(this.#strokeSizeController.value.x);
-        // this.#strokeSize = parseInt(this.#strokeSizeController.value.x) / ((this.#scaleX + this.#scaleY) / 2);
-        this.#strokeSize = parseInt(this.#strokeSizeController.value.x);
-        this.#strokeSizePX = this.#strokeSize;
-      });
-
-      window.addEventListener('resize', () => {
-        this.#setCanvas();
-      });
-
-      this.#brushInit = (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
-
-        this.#gCode.push('BEGIN\n');
-        this.#canDraw = true
-      }
-
-      this.#brushMove = (e) => {
-        if (this.#canDraw) {
-          e.preventDefault();
-          this.#canvasBounds = this.#canvas.getBoundingClientRect();
-
-          this.#pageXY = {};
-          if (e.touches) {
-            this.#pageXY.x = (e.touches[0].clientX * this.#scaleX) - (this.#canvasBounds.left / this.#scaleX);
-            this.#pageXY.y = (e.touches[0].clientY * this.#scaleY) - (this.#canvasBounds.top / this.#scaleY);
-          } else {
-            this.#pageXY.x = (e.clientX / this.#scaleX) - (this.#canvasBounds.left / this.#scaleX);
-            this.#pageXY.y = (e.clientY / this.#scaleY) - (this.#canvasBounds.top / this.#scaleY);
-          }
-
-          this.#command = null;
-
-          if (this.#brushType === 'circle') {
-            if (this.#strokeSize > 0) {
-              this.#ctx.beginPath();
-              this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize + this.#strokeSize, 0, 2 * Math.PI, false);
-              if (this.#strokeSize > 0 && this.#brushSize > 0) {
-                this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize, 0, 2 * Math.PI, true);
-              }
-              this.#ctx.fillStyle = this.#colorPickerStroke.value;
-              this.#ctx.fill();
-            }
-
-            if (this.#brushSize > 0) {
-              this.#ctx.beginPath();
-              this.#ctx.arc(this.#pageXY.x, this.#pageXY.y, this.#brushSize, 0, 2 * Math.PI, false);
-              this.#ctx.fillStyle = this.#colorPickerFill.value;
-              this.#ctx.fill();
-            }
-
-            this.#gCode.push(`${this.#strokeSize > 0 ? `C1 ${this.#pageXY.x} ${this.#pageXY.y} ${this.#brushSize + this.#strokeSize} 0 ${2 * Math.PI} false ${this.#colorPickerStroke.value}${this.#strokeSize > 0 && this.#brushSize > 0 ? ' transparent' : ''}\n`:''}${this.#brushSize > 0 ? `C2 ${this.#pageXY.x} ${this.#pageXY.y} ${this.#brushSize} 0 ${2 * Math.PI} false ${this.#colorPickerFill.value}\n` : ''}`);
-          } else {
-            if (this.#strokeSize > 0) {
-              this.#ctx.lineWidth = this.#brushSize + this.#strokeSize;
-              this.#ctx.lineCap = 'round';
-              this.#ctx.lineTo(this.#pageXY.x, this.#pageXY.y);
-              this.#ctx.strokeStyle = this.#colorPickerStroke.value;
-              this.#ctx.stroke();
-              if (this.#brushSize <= 0) {
-                this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
-              }
-            }
-
-            if (this.#brushSize > 0) {
-              this.#ctx.lineWidth = this.#brushSize;
-              this.#ctx.lineCap = 'round';
-              this.#ctx.lineTo(this.#pageXY.x, this.#pageXY.y);
-              this.#ctx.strokeStyle = this.#colorPickerFill.value;
-              this.#ctx.stroke();
-              this.#ctx.moveTo(this.#pageXY.x, this.#pageXY.y);
-            }
-
-            this.#tmp = `${this.#strokeSize > 0 || this.#brushSize > 0 ? `${this.#strokeSize > 0 ? `${this.#brushSize + this.#strokeSize} ${this.#colorPickerStroke.value.replace(/ /g, '')}`:'E'}  ${this.#brushSize > 0 ? `${this.#brushSize} ${this.#colorPickerFill.value.replace(/ /g, '')}`: 'E'}  ${this.#pageXY.x} ${this.#pageXY.y} ${this.#canvas.width} ${this.#canvas.height}\n` : ''}`;
-            if (this.#tmp !== '') {
-              this.#gCode.push(this.#tmp);
-            }
-          }
-        }
-      }
-
-      this.#canvas.addEventListener('mousedown', (e) => {
-        this.#brushInit(e);
-        this.#brushMove(e);
-      });
-
-      document.addEventListener('mousedown', (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
-
-        this.#canDraw = true;
-      });
-
-      this.#canvas.addEventListener('touchstart', (e) => {
-        this.#brushInit(e);
-        this.#brushMove(e);
-      }, {
-        passive: false
-      });
-
-      document.addEventListener('touchstart', (e) => {
-        if (this.#brushType === 'line') {
-          this.#ctx.beginPath();
-        }
-
-        this.#canDraw = true;
-      }, {
-        passive: false
-      });
-
-
-
-      this.#canvas.addEventListener('mousemove', (e) => {
-        this.#brushMove(e);
-      });
-
-      this.#canvas.addEventListener('touchmove', (e) => {
-        this.#brushMove(e);
-      }, {
-        passive: false
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (e.target === this.#canvas) {
-          this.#outofCanvas = false;
-        } else {
-          if (!this.#outofCanvas && this.#canDraw) {
-            this.#ctx.beginPath();
-          }
-          this.#outofCanvas = true;
-        }
-      })
-
-      document.addEventListener('touchmove', (e) => {
-        if (e.target === this.#canvas) {
-          this.#outofCanvas = false;
-        } else {
-          if (!this.#outofCanvas && this.#canDraw) {
-            this.#ctx.beginPath();
-          }
-          this.#outofCanvas = true;
-        }
-      }, {
-        passive: false
-      })
-
-      document.addEventListener('mouseup', () => {
-        this.#canDraw = false;
-        if (this.#gCode.length === 1) {
-          this.#gCode.pop();
-        }
-      });
-
-      document.addEventListener('touchend', () => {
-        this.#canDraw = false;
-        if (this.#gCode.length === 1) {
-          this.#gCode.pop();
-        }
-      }, {
-        passive: false
-      });
-
     }
-  }
-  customElements.define(drawingAppElName, DrawingApp);
+    customElements.define(drawingAppElName, DrawingApp);
 }
 
-
 if (typeof colorPickerCss === 'undefined') {
-  const colorPickerCss = document.createElement('style');
-  colorPickerCss.textContent = `
+    const colorPickerCss = document.createElement('style');
+    colorPickerCss.textContent = `
     range-slider .draggable-controller{
       display: inline-block;
       width: 18px;
@@ -867,75 +879,74 @@ if (typeof colorPickerCss === 'undefined') {
     }
   `;
 
-  document.head.appendChild(colorPickerCss);
+    document.head.appendChild(colorPickerCss);
 }
 
 if (typeof ColorPicker === 'undefined') {
-  let colorPickerInitCounter = 0;
+    let colorPickerInitCounter = 0;
 
-  class ColorPicker extends HTMLElement {
-    #R = 0;
-    #G = 0;
-    #B = 0;
-    #A = 1;
+    class ColorPicker extends HTMLElement {
+        #R = 0;
+        #G = 0;
+        #B = 0;
+        #A = 1;
 
-    #cpColorPickedEvent = new CustomEvent('select', {
-      bubbles: true
-    });
+        #cpColorPickedEvent = new CustomEvent('select', {
+            bubbles: true,
+        });
 
-    #cpColorPickingEvent = new CustomEvent('selecting', {
-      bubbles: true
-    });
+        #cpColorPickingEvent = new CustomEvent('selecting', {
+            bubbles: true,
+        });
 
-    #gradient;
-    #cpPalletteSlider;
-    #colorsSlider;
-    #opacitySlider;
-    #canvasPallete;
-    #setCanvas;
-    #canvasPalleteContext;
-    #canvasPalleteGrdToTop;
-    #canvasPalleteGrdToLeft;
-    #i;
-    #colorIndexes;
-    #gradColor;
-    #color1;
-    #color2;
-    #color1_x;
-    #color2_x;
-    #slider_x;
-    #ratio;
-    #rgbColor = [0, 0, 0];
-    #getPixelColorFromCanvas;
-    #imageData;
-    #selectColorBttn;
-    #activeColor;
-    #cpId;
+        #gradient;
+        #cpPalletteSlider;
+        #colorsSlider;
+        #opacitySlider;
+        #canvasPallete;
+        #setCanvas;
+        #canvasPalleteContext;
+        #canvasPalleteGrdToTop;
+        #canvasPalleteGrdToLeft;
+        #i;
+        #colorIndexes;
+        #gradColor;
+        #color1;
+        #color2;
+        #color1_x;
+        #color2_x;
+        #slider_x;
+        #ratio;
+        #rgbColor = [0, 0, 0];
+        #getPixelColorFromCanvas;
+        #imageData;
+        #selectColorBttn;
+        #activeColor;
+        #cpId;
 
-    constructor() {
-      super();
-      this.#R = 255;
-      this.#G = 0;
-      this.#B = 0;
-      this.#A = 1;
-      this.value = 'rgba(0, 0, 0, 1)';
-      this.futureValue = 'rgba(0, 0, 0, 1)';
-      this.#gradient = [
-        [0, [255, 0, 0]],
-        [100 / 6, [255, 255, 0]],
-        [100 / 6 * 2, [0, 255, 0]],
-        [100 / 6 * 3, [0, 255, 255]],
-        [100 / 6 * 4, [0, 0, 255]],
-        [100 / 6 * 5, [255, 0, 255]],
-        [100 / 6 * 6, [255, 0, 0]],
-      ];
+        constructor() {
+            super();
+            this.#R = 255;
+            this.#G = 0;
+            this.#B = 0;
+            this.#A = 1;
+            this.value = 'rgba(0, 0, 0, 1)';
+            this.futureValue = 'rgba(0, 0, 0, 1)';
+            this.#gradient = [
+                [0, [255, 0, 0]],
+                [100 / 6, [255, 255, 0]],
+                [(100 / 6) * 2, [0, 255, 0]],
+                [(100 / 6) * 3, [0, 255, 255]],
+                [(100 / 6) * 4, [0, 0, 255]],
+                [(100 / 6) * 5, [255, 0, 255]],
+                [(100 / 6) * 6, [255, 0, 0]],
+            ];
 
+            colorPickerInitCounter++;
+            this.#cpId = colorPickerInitCounter;
 
-      colorPickerInitCounter++;
-      this.#cpId = colorPickerInitCounter;
-
-      const colorPickerUniqueStyle = document.createElement('style');
-      colorPickerUniqueStyle.textContent = `
+            const colorPickerUniqueStyle = document.createElement('style');
+            colorPickerUniqueStyle.textContent = `
       :root{
         --cp-current-color-${this.#cpId}: rgba(0, 0, 0, 1);
         --cp-color-transparency-${this.#cpId}: 1;
@@ -960,10 +971,10 @@ if (typeof ColorPicker === 'undefined') {
         background-size: 100%, 5px;
       }
       `;
-      document.head.appendChild(colorPickerUniqueStyle);
+            document.head.appendChild(colorPickerUniqueStyle);
 
-      this.classList.add(`cp-${this.#cpId}`);
-      this.innerHTML = `
+            this.classList.add(`cp-${this.#cpId}`);
+            this.innerHTML = `
         <button type="button" class="cp-init-button"></button>
         <div class="cp-app">
           <range-slider class="cp-color-palette"></range-slider>
@@ -981,381 +992,398 @@ if (typeof ColorPicker === 'undefined') {
         </div>
       `;
 
-      this.#cpPalletteSlider = this.querySelector('range-slider.cp-color-palette');
-      this.#colorsSlider = this.querySelector('range-slider.cp-colors');
-      this.#opacitySlider = this.querySelector('range-slider.cp-opacity');
-      this.#selectColorBttn = this.querySelector('.cp-select-color-bttn');
-      this.#canvasPallete = document.createElement('canvas');
-      this.#canvasPalleteContext = this.#canvasPallete.getContext('2d');
+            this.#cpPalletteSlider = this.querySelector('range-slider.cp-color-palette');
+            this.#colorsSlider = this.querySelector('range-slider.cp-colors');
+            this.#opacitySlider = this.querySelector('range-slider.cp-opacity');
+            this.#selectColorBttn = this.querySelector('.cp-select-color-bttn');
+            this.#canvasPallete = document.createElement('canvas');
+            this.#canvasPalleteContext = this.#canvasPallete.getContext('2d');
 
-      this.#cpPalletteSlider.value = {
-        x: 0,
-        y: 100
-      };
+            this.#cpPalletteSlider.value = {
+                x: 0,
+                y: 100,
+            };
 
-      this.#colorsSlider.value = {
-        x: 0,
-        y: null
-      };
+            this.#colorsSlider.value = {
+                x: 0,
+                y: null,
+            };
 
-      this.#opacitySlider.value = {
-        x: 100,
-        y: null
-      };
+            this.#opacitySlider.value = {
+                x: 100,
+                y: null,
+            };
 
-      this.#setCanvas = () => {
-        document.documentElement.style.setProperty(`--cp-color-transparency-${this.#cpId}`, this.#A);
+            this.#setCanvas = () => {
+                document.documentElement.style.setProperty(`--cp-color-transparency-${this.#cpId}`, this.#A);
 
-        this.#canvasPallete.width = this.#cpPalletteSlider.offsetWidth;
-        this.#canvasPallete.height = this.#cpPalletteSlider.offsetHeight;
-        this.#canvasPalleteContext.clearRect(0, 0, this.#canvasPallete.width, this.#canvasPallete.height);
+                this.#canvasPallete.width = this.#cpPalletteSlider.offsetWidth;
+                this.#canvasPallete.height = this.#cpPalletteSlider.offsetHeight;
+                this.#canvasPalleteContext.clearRect(0, 0, this.#canvasPallete.width, this.#canvasPallete.height);
 
-        this.#canvasPalleteGrdToLeft = this.#canvasPalleteContext.createLinearGradient(this.#canvasPallete.width, this.#canvasPallete.height, 0, 0);
-        this.#canvasPalleteGrdToLeft.addColorStop(0, `rgba(${this.#R}, ${this.#G}, ${this.#B}, ${this.#A})`);
-        this.#canvasPalleteGrdToLeft.addColorStop(1, `rgba(255, 255, 255, ${this.#A})`);
-        this.#canvasPalleteContext.fillStyle = this.#canvasPalleteGrdToLeft;
-        this.#canvasPalleteContext.fillRect(0, 0, this.#canvasPallete.width, this.#canvasPallete.height);
+                this.#canvasPalleteGrdToLeft = this.#canvasPalleteContext.createLinearGradient(this.#canvasPallete.width, this.#canvasPallete.height, 0, 0);
+                this.#canvasPalleteGrdToLeft.addColorStop(0, `rgba(${this.#R}, ${this.#G}, ${this.#B}, ${this.#A})`);
+                this.#canvasPalleteGrdToLeft.addColorStop(1, `rgba(255, 255, 255, ${this.#A})`);
+                this.#canvasPalleteContext.fillStyle = this.#canvasPalleteGrdToLeft;
+                this.#canvasPalleteContext.fillRect(0, 0, this.#canvasPallete.width, this.#canvasPallete.height);
 
-        this.#canvasPalleteGrdToTop = this.#canvasPalleteContext.createLinearGradient(0, this.#canvasPallete.height, 0, 0);
-        this.#canvasPalleteGrdToTop.addColorStop(0, `rgba(0, 0, 0, ${this.#A})`);
-        this.#canvasPalleteGrdToTop.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        this.#canvasPalleteContext.fillStyle = this.#canvasPalleteGrdToTop;
-        this.#canvasPalleteContext.fillRect(0, 0, this.#canvasPallete.width, this.#canvasPallete.height);
-      }
+                this.#canvasPalleteGrdToTop = this.#canvasPalleteContext.createLinearGradient(0, this.#canvasPallete.height, 0, 0);
+                this.#canvasPalleteGrdToTop.addColorStop(0, `rgba(0, 0, 0, ${this.#A})`);
+                this.#canvasPalleteGrdToTop.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                this.#canvasPalleteContext.fillStyle = this.#canvasPalleteGrdToTop;
+                this.#canvasPalleteContext.fillRect(0, 0, this.#canvasPallete.width, this.#canvasPallete.height);
+            };
 
-      this.#setCanvas();
+            this.#setCanvas();
 
+            this.#getPixelColorFromCanvas = (
+                _cp_coords = {
+                    x: 0,
+                    y: 0,
+                }
+            ) => {
+                this.#imageData = Array.from(this.#canvasPalleteContext.getImageData((this.#canvasPallete.width * _cp_coords.x) / 100 - 0.5, (this.#canvasPallete.height * _cp_coords.y) / 100 - 0.5, 1, 1).data);
+                this.#imageData[3] = this.#A;
+                return this.#imageData;
+            };
 
-      this.#getPixelColorFromCanvas = (_cp_coords = {
-        x: 0,
-        y: 0
-      }) => {
-        this.#imageData = Array.from(this.#canvasPalleteContext.getImageData(this.#canvasPallete.width * _cp_coords.x / 100 - 0.5, this.#canvasPallete.height * _cp_coords.y / 100 - 0.5, 1, 1).data);
-        this.#imageData[3] = this.#A;
-        return this.#imageData;
-      }
+            this.querySelector('.cp-init-button').addEventListener('click', () => {
+                this.querySelector('.cp-app').classList.toggle('cp-app-show');
+            });
 
-      this.querySelector('.cp-init-button').addEventListener('click', () => {
-        this.querySelector('.cp-app').classList.toggle('cp-app-show');
-      });
+            this.#cpPalletteSlider.addEventListener('input', () => {
+                this.#setCanvas();
+                document.documentElement.style.setProperty(
+                    `--cp-active-color-${this.#cpId}`,
+                    `rgba(${this.#getPixelColorFromCanvas({
+                        x: this.#cpPalletteSlider.value.x,
+                        y: this.#cpPalletteSlider.value.y,
+                    }).join()})`
+                );
+                this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
+                this.dispatchEvent(this.#cpColorPickingEvent);
+            });
 
+            this.#colorsSlider.addEventListener('input', () => {
+                this.#i = 0;
+                this.#colorIndexes = [0, 0];
+                for (this.#gradColor of this.#gradient) {
+                    if (this.#colorsSlider.value.x <= this.#gradColor[0]) {
+                        this.#colorIndexes = [this.#i - 1, this.#i];
+                        break;
+                    }
 
-      this.#cpPalletteSlider.addEventListener('input', () => {
-        this.#setCanvas();
-        document.documentElement.style.setProperty(`--cp-active-color-${this.#cpId}`, `rgba(${this.#getPixelColorFromCanvas({
-          x: this.#cpPalletteSlider.value.x,
-          y: this.#cpPalletteSlider.value.y
-        }).join()})`);
-        this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.dispatchEvent(this.#cpColorPickingEvent);
-      });
+                    this.#i++;
+                }
+                this.#colorIndexes[0] = this.#colorIndexes[0] === -1 ? 0 : this.#colorIndexes[0];
+                this.#color1 = this.#gradient[this.#colorIndexes[0]][1];
+                this.#color2 = this.#gradient[this.#colorIndexes[1]][1];
 
-      this.#colorsSlider.addEventListener('input', () => {
-        this.#i = 0;
-        this.#colorIndexes = [0, 0];
-        for (this.#gradColor of this.#gradient) {
-          if (this.#colorsSlider.value.x <= this.#gradColor[0]) {
-            this.#colorIndexes = [this.#i - 1, this.#i];
-            break;
-          }
+                this.#color1_x = this.#colorsSlider.offsetWidth * (this.#gradient[this.#colorIndexes[0]][0] / 100);
+                this.#color2_x = this.#colorsSlider.offsetWidth * (this.#gradient[this.#colorIndexes[1]][0] / 100) - this.#color1_x;
+                this.#slider_x = this.#colorsSlider.offsetWidth * (this.#colorsSlider.value.x / 100) - this.#color1_x;
+                this.#ratio = this.#slider_x / this.#color2_x;
+                if (this.#color1 === this.#color2) {
+                    this.#ratio = 1;
+                }
+                this.#rgbColor = pickHex(this.#color2, this.#color1, this.#ratio);
+                this.#R = this.#rgbColor[0];
+                this.#G = this.#rgbColor[1];
+                this.#B = this.#rgbColor[2];
+                document.documentElement.style.setProperty(`--cp-color-range-slider-${this.#cpId}`, this.#rgbColor.join());
 
-          this.#i++;
+                this.#setCanvas();
+                document.documentElement.style.setProperty(
+                    `--cp-active-color-${this.#cpId}`,
+                    `rgba(${this.#getPixelColorFromCanvas({
+                        x: this.#cpPalletteSlider.value.x,
+                        y: this.#cpPalletteSlider.value.y,
+                    }).join()})`
+                );
+                this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
+                this.dispatchEvent(this.#cpColorPickingEvent);
+            });
+
+            this.#opacitySlider.addEventListener('input', () => {
+                this.#A = this.#opacitySlider.value.x / 100;
+                this.#opacitySlider.querySelector('.draggable-controller').style.backgroundColor = `rgba(0, 0, 0, ${this.#A})`;
+                this.#setCanvas();
+                document.documentElement.style.setProperty(
+                    `--cp-active-color-${this.#cpId}`,
+                    `rgba(${this.#getPixelColorFromCanvas({
+                        x: this.#cpPalletteSlider.value.x,
+                        y: this.#cpPalletteSlider.value.y,
+                    }).join()})`
+                );
+                this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
+                this.dispatchEvent(this.#cpColorPickingEvent);
+            });
+
+            this.#selectColorBttn.addEventListener('click', () => {
+                this.#activeColor = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
+                this.value = this.#activeColor;
+                document.documentElement.style.setProperty(`--cp-current-color-${this.#cpId}`, this.#activeColor);
+                this.querySelector('.cp-app').classList.remove('cp-app-show');
+                this.dispatchEvent(this.#cpColorPickedEvent);
+            });
+
+            document.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.cp-app') !== this.querySelector('.cp-app') && e.target !== this.querySelector('.cp-init-button')) {
+                    this.querySelector('.cp-app').classList.remove('cp-app-show');
+                }
+            });
         }
-        this.#colorIndexes[0] = this.#colorIndexes[0] === -1 ? 0 : this.#colorIndexes[0];
-        this.#color1 = this.#gradient[this.#colorIndexes[0]][1];
-        this.#color2 = this.#gradient[this.#colorIndexes[1]][1];
 
-        this.#color1_x = this.#colorsSlider.offsetWidth * (this.#gradient[this.#colorIndexes[0]][0] / 100);
-        this.#color2_x = this.#colorsSlider.offsetWidth * (this.#gradient[this.#colorIndexes[1]][0] / 100) - this.#color1_x;
-        this.#slider_x = this.#colorsSlider.offsetWidth * (this.#colorsSlider.value.x / 100) - this.#color1_x;
-        this.#ratio = this.#slider_x / this.#color2_x;
-        if (this.#color1 === this.#color2) {
-          this.#ratio = 1;
-        }
-        this.#rgbColor = pickHex(this.#color2, this.#color1, this.#ratio);
-        this.#R = this.#rgbColor[0];
-        this.#G = this.#rgbColor[1];
-        this.#B = this.#rgbColor[2];
-        document.documentElement.style.setProperty(`--cp-color-range-slider-${this.#cpId}`, this.#rgbColor.join());
-
-        this.#setCanvas();
-        document.documentElement.style.setProperty(`--cp-active-color-${this.#cpId}`, `rgba(${this.#getPixelColorFromCanvas({
-          x: this.#cpPalletteSlider.value.x,
-          y: this.#cpPalletteSlider.value.y
-        }).join()})`);
-        this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.dispatchEvent(this.#cpColorPickingEvent);
-      });
-
-      this.#opacitySlider.addEventListener('input', () => {
-        this.#A = this.#opacitySlider.value.x / 100;
-        this.#opacitySlider.querySelector('.draggable-controller').style.backgroundColor = `rgba(0, 0, 0, ${this.#A})`;
-        this.#setCanvas();
-        document.documentElement.style.setProperty(`--cp-active-color-${this.#cpId}`, `rgba(${this.#getPixelColorFromCanvas({
-          x: this.#cpPalletteSlider.value.x,
-          y: this.#cpPalletteSlider.value.y
-        }).join()})`);
-        this.futureValue = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.dispatchEvent(this.#cpColorPickingEvent);
-      });
-
-      this.#selectColorBttn.addEventListener('click', () => {
-        this.#activeColor = getComputedStyle(document.documentElement).getPropertyValue(`--cp-active-color-${this.#cpId}`);
-        this.value = this.#activeColor;
-        document.documentElement.style.setProperty(`--cp-current-color-${this.#cpId}`, this.#activeColor);
-        this.querySelector('.cp-app').classList.remove('cp-app-show');
-        this.dispatchEvent(this.#cpColorPickedEvent);
-      });
-
-      document.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.cp-app') !== this.querySelector('.cp-app') && e.target !== this.querySelector('.cp-init-button')) {
-          this.querySelector('.cp-app').classList.remove('cp-app-show');
-        }
-      });
+        connectedCallback() {}
     }
+    customElements.define('color-picker', ColorPicker);
 
-    connectedCallback() {
-
+    function pickHex(color1, color2, weight) {
+        var w1 = weight;
+        var w2 = 1 - w1;
+        var rgb = [Math.round(color1[0] * w1 + color2[0] * w2), Math.round(color1[1] * w1 + color2[1] * w2), Math.round(color1[2] * w1 + color2[2] * w2)];
+        return rgb;
     }
-  }
-  customElements.define('color-picker', ColorPicker);
-
-  function pickHex(color1, color2, weight) {
-    var w1 = weight;
-    var w2 = 1 - w1;
-    var rgb = [Math.round(color1[0] * w1 + color2[0] * w2),
-      Math.round(color1[1] * w1 + color2[1] * w2),
-      Math.round(color1[2] * w1 + color2[2] * w2)
-    ];
-    return rgb;
-  }
 }
 
 if (typeof RangeSlider === 'undefined') {
-  class RangeSlider extends HTMLElement {
-    #sliderPercents = {
-      x: null,
-      y: null
-    };
+    class RangeSlider extends HTMLElement {
+        #sliderPercents = {
+            x: null,
+            y: null,
+        };
 
-    #dragElementEvent = new CustomEvent('input', {
-      bubbles: true,
-      detail: this.#sliderPercents
-    });
+        #dragElementEvent = new CustomEvent('input', {
+            bubbles: true,
+            detail: this.#sliderPercents,
+        });
 
-    #shiftX;
-    #shiftY;
-    #X;
-    #Y;
-    #percentX;
-    #percentY;
-    #hasBeenDragged;
-    #canDrag;
-    #dragger;
-    #dragInit;
-    #elementBounds;
-    #clientXY;
-    #dragDestroy;
-    #dragging;
-    #controllerForBounds;
-    #pageXY;
-    #privateValue;
-    constructor() {
-      super();
-    }
-
-    get value() {
-      return this.#privateValue;
-    }
-
-    set value(val) {
-      this.#privateValue = val;
-
-      this.#dragger = this.querySelector('.draggable-controller');
-      this.#dragger.classList.add('transition');
-      this.#elementBounds = this.#dragger.getBoundingClientRect();
-      this.#dragger.style.left = `calc(${this.#privateValue.x}% - ${this.#elementBounds.width / 2}px)`;
-      this.#dragger.style.top = `calc(${this.#privateValue.y}% - ${this.#elementBounds.height / 2}px)`;
-      this.#dragger.style.right = 'auto';
-      this.#dragger.style.bottom = 'auto';
-    }
-
-    connectedCallback() {
-      this.innerHTML = '<div class="draggable-controller"></div>';
-      this.#shiftX;
-      this.#shiftY;
-      this.#X;
-      this.#Y;
-      this.#percentX = null;
-      this.#percentY = null;
-      this.#hasBeenDragged = false;
-      this.#canDrag = false;
-      this.#privateValue = {
-        x: null,
-        y: null
-      };
-
-      this.#dragger = this.querySelector('.draggable-controller');
-
-      if (this.#dragger) {
-        this.#dragInit = (e) => {
-          if (e.target.closest(this.tagName)) {
-            this.#elementBounds = this.#dragger.getBoundingClientRect();
-            this.#clientXY = {};
-
-            if (e.touches) {
-              this.#clientXY.x = e.touches[0].clientX;
-              this.#clientXY.y = e.touches[0].clientY;
-            } else {
-              this.#clientXY.x = e.clientX;
-              this.#clientXY.y = e.clientY;
-            }
-
-            this.#shiftX = this.#clientXY.x - this.#elementBounds.left;
-            this.#shiftY = this.#clientXY.y - this.#elementBounds.top;
-
-            this.#canDrag = true;
-          } else {
-            this.#canDrag = false;
-          }
+        #shiftX;
+        #shiftY;
+        #X;
+        #Y;
+        #percentX;
+        #percentY;
+        #hasBeenDragged;
+        #canDrag;
+        #dragger;
+        #dragInit;
+        #elementBounds;
+        #clientXY;
+        #dragDestroy;
+        #dragging;
+        #controllerForBounds;
+        #pageXY;
+        #privateValue;
+        constructor() {
+            super();
         }
 
-        this.#dragDestroy = () => {
-          this.#dragger.classList.add('transition');
-          this.#canDrag = false;
-          if (this.#hasBeenDragged) {
-            this.#hasBeenDragged = false;
-          }
+        get value() {
+            return this.#privateValue;
         }
 
-        this.#dragger.addEventListener('mousedown', (e) => {
-          this.#dragger.classList.add('transition');
-          this.#dragInit(e);
-        });
+        set value(val) {
+            this.#privateValue = val;
 
-        this.#dragger.addEventListener('touchstart', (e) => {
-          this.#dragger.classList.add('transition');
-          this.#dragInit(e);
-        }, {
-          passive: true
-        });
-
-        document.addEventListener('mouseup', (e) => {
-          this.#dragDestroy();
-        });
-
-        document.addEventListener('touchend', (e) => {
-          this.#dragDestroy();
-        }, {
-          passive: true
-        });
-
-        this.#dragging = (e) => {
-          if (this.#canDrag) {
-            e.preventDefault();
-            this.#hasBeenDragged = true;
+            this.#dragger = this.querySelector('.draggable-controller');
+            this.#dragger.classList.add('transition');
             this.#elementBounds = this.#dragger.getBoundingClientRect();
-            this.#controllerForBounds = this.getBoundingClientRect();
-            this.#pageXY = {};
-            if (e.touches) {
-              this.#pageXY.x = e.touches[0].clientX;
-              this.#pageXY.y = e.touches[0].clientY;
-            } else {
-              this.#pageXY.x = e.clientX;
-              this.#pageXY.y = e.clientY;
-            }
-
-            if (this.#dragger.position === 'absolute') {
-              const xCoord = this.#pageXY.x - (this.#elementBounds.width / 2) - this.#controllerForBounds.x;
-              const yCoord = this.#pageXY.y - (this.#elementBounds.width / 2) - this.#controllerForBounds.y;
-              if (!this.classList.contains('vertical')) {
-                if (xCoord >= (-1 * (this.#elementBounds.width / 2)) && xCoord <= this.#controllerForBounds.width - (this.#elementBounds.width / 2)) {
-
-                  this.#X = xCoord;
-
-                } else if (xCoord < (-1 * (this.#elementBounds.width / 2))) {
-                  this.#X = (-1 * (this.#elementBounds.width / 2));
-                } else if (xCoord > this.#controllerForBounds.width - (this.#elementBounds.width / 2)) {
-                  this.#X = this.#controllerForBounds.width - (this.#elementBounds.width / 2);
-                }
-
-                this.#percentX = this.#X / (this.#controllerForBounds.width - (this.#elementBounds.width / 2)) * 100;
-                if (this.#percentX < 0) {
-                  this.#percentX = 0;
-                } else if (this.#percentX > 100) {
-                  this.#percentX = 100;
-                }
-              }
-              if (!this.classList.contains('horizontal')) {
-                if (yCoord >= (-1 * (this.#elementBounds.width / 2)) && yCoord <= this.#controllerForBounds.height - (this.#elementBounds.width / 2)) {
-                  this.#Y = yCoord;
-                } else if (yCoord < (-1 * (this.#elementBounds.height / 2))) {
-                  this.#Y = (-1 * (this.#elementBounds.height / 2));
-                } else if (yCoord > this.#controllerForBounds.height - (this.#elementBounds.height / 2)) {
-                  this.#Y = this.#controllerForBounds.height - (this.#elementBounds.height / 2);
-                }
-
-                this.#percentY = this.#Y / (this.#controllerForBounds.height - (this.#elementBounds.height / 2)) * 100;
-                if (this.#percentY < 0) {
-                  this.#percentY = 0;
-                } else if (this.#percentY > 100) {
-                  this.#percentY = 100;
-                }
-              }
-            }
-
-            this.#dragger.style.left = `calc(${this.#percentX}% - ${this.#elementBounds.width / 2}px)`;
-            this.#dragger.style.top = `calc(${this.#percentY}% - ${this.#elementBounds.height / 2}px)`;
+            this.#dragger.style.left = `calc(${this.#privateValue.x}% - ${this.#elementBounds.width / 2}px)`;
+            this.#dragger.style.top = `calc(${this.#privateValue.y}% - ${this.#elementBounds.height / 2}px)`;
             this.#dragger.style.right = 'auto';
             this.#dragger.style.bottom = 'auto';
-            this.#sliderPercents.x = this.#percentX;
-            this.#sliderPercents.y = this.#percentY;
-            this.#privateValue.x = this.#percentX;
-            this.#privateValue.y = this.#percentY;
-            this.dispatchEvent(this.#dragElementEvent);
-          }
         }
 
-        this.addEventListener('mousedown', (e) => {
-          this.#dragger.classList.add('transition');
-          this.#canDrag = true;
-          this.#dragging(e);
-        });
+        connectedCallback() {
+            this.innerHTML = '<div class="draggable-controller"></div>';
+            this.#shiftX;
+            this.#shiftY;
+            this.#X;
+            this.#Y;
+            this.#percentX = null;
+            this.#percentY = null;
+            this.#hasBeenDragged = false;
+            this.#canDrag = false;
+            this.#privateValue = {
+                x: null,
+                y: null,
+            };
 
-        this.addEventListener('touchstart', (e) => {
-          this.#dragger.classList.add('transition');
-          this.#canDrag = true;
-          this.#dragging(e);
-        }, {
-          passive: false
-        });
+            this.#dragger = this.querySelector('.draggable-controller');
 
-        document.addEventListener('mousemove', (e) => {
-          this.#dragger.classList.remove('transition');
-          this.#dragging(e);
-        });
+            if (this.#dragger) {
+                this.#dragInit = (e) => {
+                    if (e.target.closest(this.tagName)) {
+                        this.#elementBounds = this.#dragger.getBoundingClientRect();
+                        this.#clientXY = {};
 
-        document.addEventListener('touchmove', (e) => {
-          this.#dragger.classList.remove('transition');
-          this.#dragging(e);
-        }, {
-          passive: false
-        });
-      }
-      if (window.getComputedStyle(this.#dragger, null).getPropertyValue('position') === 'static' || !window.getComputedStyle(this.#dragger, null).getPropertyValue('position')) {
-        this.#dragger.style.position = 'absolute';
-      }
-      this.#dragger.position = window.getComputedStyle(this.#dragger, null).getPropertyValue('position');
-      if (this.classList.contains('horizontal')) {
-        this.#dragger.style.transform = 'translateY(-50%)';
-        this.#dragger.style.top = '50%';
-      } else if (this.classList.contains('vertical')) {
-        this.#dragger.style.transform = 'translateX(-50%)';
-        this.#dragger.style.left = '50%';
-      }
+                        if (e.touches) {
+                            this.#clientXY.x = e.touches[0].clientX;
+                            this.#clientXY.y = e.touches[0].clientY;
+                        } else {
+                            this.#clientXY.x = e.clientX;
+                            this.#clientXY.y = e.clientY;
+                        }
 
+                        this.#shiftX = this.#clientXY.x - this.#elementBounds.left;
+                        this.#shiftY = this.#clientXY.y - this.#elementBounds.top;
+
+                        this.#canDrag = true;
+                    } else {
+                        this.#canDrag = false;
+                    }
+                };
+
+                this.#dragDestroy = () => {
+                    this.#dragger.classList.add('transition');
+                    this.#canDrag = false;
+                    if (this.#hasBeenDragged) {
+                        this.#hasBeenDragged = false;
+                    }
+                };
+
+                this.#dragger.addEventListener('mousedown', (e) => {
+                    this.#dragger.classList.add('transition');
+                    this.#dragInit(e);
+                });
+
+                this.#dragger.addEventListener(
+                    'touchstart',
+                    (e) => {
+                        this.#dragger.classList.add('transition');
+                        this.#dragInit(e);
+                    },
+                    {
+                        passive: true,
+                    }
+                );
+
+                document.addEventListener('mouseup', (e) => {
+                    this.#dragDestroy();
+                });
+
+                document.addEventListener(
+                    'touchend',
+                    (e) => {
+                        this.#dragDestroy();
+                    },
+                    {
+                        passive: true,
+                    }
+                );
+
+                this.#dragging = (e) => {
+                    if (this.#canDrag) {
+                        e.preventDefault();
+                        this.#hasBeenDragged = true;
+                        this.#elementBounds = this.#dragger.getBoundingClientRect();
+                        this.#controllerForBounds = this.getBoundingClientRect();
+                        this.#pageXY = {};
+                        if (e.touches) {
+                            this.#pageXY.x = e.touches[0].clientX;
+                            this.#pageXY.y = e.touches[0].clientY;
+                        } else {
+                            this.#pageXY.x = e.clientX;
+                            this.#pageXY.y = e.clientY;
+                        }
+
+                        if (this.#dragger.position === 'absolute') {
+                            const xCoord = this.#pageXY.x - this.#elementBounds.width / 2 - this.#controllerForBounds.x;
+                            const yCoord = this.#pageXY.y - this.#elementBounds.width / 2 - this.#controllerForBounds.y;
+                            if (!this.classList.contains('vertical')) {
+                                if (xCoord >= -1 * (this.#elementBounds.width / 2) && xCoord <= this.#controllerForBounds.width - this.#elementBounds.width / 2) {
+                                    this.#X = xCoord;
+                                } else if (xCoord < -1 * (this.#elementBounds.width / 2)) {
+                                    this.#X = -1 * (this.#elementBounds.width / 2);
+                                } else if (xCoord > this.#controllerForBounds.width - this.#elementBounds.width / 2) {
+                                    this.#X = this.#controllerForBounds.width - this.#elementBounds.width / 2;
+                                }
+
+                                this.#percentX = (this.#X / (this.#controllerForBounds.width - this.#elementBounds.width / 2)) * 100;
+                                if (this.#percentX < 0) {
+                                    this.#percentX = 0;
+                                } else if (this.#percentX > 100) {
+                                    this.#percentX = 100;
+                                }
+                            }
+                            if (!this.classList.contains('horizontal')) {
+                                if (yCoord >= -1 * (this.#elementBounds.width / 2) && yCoord <= this.#controllerForBounds.height - this.#elementBounds.width / 2) {
+                                    this.#Y = yCoord;
+                                } else if (yCoord < -1 * (this.#elementBounds.height / 2)) {
+                                    this.#Y = -1 * (this.#elementBounds.height / 2);
+                                } else if (yCoord > this.#controllerForBounds.height - this.#elementBounds.height / 2) {
+                                    this.#Y = this.#controllerForBounds.height - this.#elementBounds.height / 2;
+                                }
+
+                                this.#percentY = (this.#Y / (this.#controllerForBounds.height - this.#elementBounds.height / 2)) * 100;
+                                if (this.#percentY < 0) {
+                                    this.#percentY = 0;
+                                } else if (this.#percentY > 100) {
+                                    this.#percentY = 100;
+                                }
+                            }
+                        }
+
+                        this.#dragger.style.left = `calc(${this.#percentX}% - ${this.#elementBounds.width / 2}px)`;
+                        this.#dragger.style.top = `calc(${this.#percentY}% - ${this.#elementBounds.height / 2}px)`;
+                        this.#dragger.style.right = 'auto';
+                        this.#dragger.style.bottom = 'auto';
+                        this.#sliderPercents.x = this.#percentX;
+                        this.#sliderPercents.y = this.#percentY;
+                        this.#privateValue.x = this.#percentX;
+                        this.#privateValue.y = this.#percentY;
+                        this.dispatchEvent(this.#dragElementEvent);
+                    }
+                };
+
+                this.addEventListener('mousedown', (e) => {
+                    this.#dragger.classList.add('transition');
+                    this.#canDrag = true;
+                    this.#dragging(e);
+                });
+
+                this.addEventListener(
+                    'touchstart',
+                    (e) => {
+                        this.#dragger.classList.add('transition');
+                        this.#canDrag = true;
+                        this.#dragging(e);
+                    },
+                    {
+                        passive: false,
+                    }
+                );
+
+                document.addEventListener('mousemove', (e) => {
+                    this.#dragger.classList.remove('transition');
+                    this.#dragging(e);
+                });
+
+                document.addEventListener(
+                    'touchmove',
+                    (e) => {
+                        this.#dragger.classList.remove('transition');
+                        this.#dragging(e);
+                    },
+                    {
+                        passive: false,
+                    }
+                );
+            }
+            if (window.getComputedStyle(this.#dragger, null).getPropertyValue('position') === 'static' || !window.getComputedStyle(this.#dragger, null).getPropertyValue('position')) {
+                this.#dragger.style.position = 'absolute';
+            }
+            this.#dragger.position = window.getComputedStyle(this.#dragger, null).getPropertyValue('position');
+            if (this.classList.contains('horizontal')) {
+                this.#dragger.style.transform = 'translateY(-50%)';
+                this.#dragger.style.top = '50%';
+            } else if (this.classList.contains('vertical')) {
+                this.#dragger.style.transform = 'translateX(-50%)';
+                this.#dragger.style.left = '50%';
+            }
+        }
     }
-  }
 
-  customElements.define('range-slider', RangeSlider);
+    customElements.define('range-slider', RangeSlider);
 }
