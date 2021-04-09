@@ -356,43 +356,49 @@ if (typeof DrawingApp === 'undefined') {
                 fetch(URL.createObjectURL(e.target.files[0]))
                     .then((r) => r.text())
                     .then((data) => {
-                        this.#maxX = 0;
-                        this.#maxY = 0;
+                        if (data) {
+                            this.#maxX = 0;
+                            this.#maxY = 0;
 
-                        this.#tmp = data.split('\n');
-                        for (this.#tmp2 of this.#tmp) {
-                            if (this.#tmp2 !== 'BEGIN' && this.#tmp2 != '') {
-                                this.#tmp3 = this.#tmp2;
-                                this.#tmp3 = this.#tmp3.split('  ');
-                                this.#tmp3 = this.#tmp3[2].split(' ');
+                            this.#tmp = data.split('\n');
+                            for (this.#tmp2 of this.#tmp) {
+                                if (this.#tmp2 !== 'BEGIN' && this.#tmp2 != '') {
+                                    this.#tmp3 = this.#tmp2;
+                                    this.#tmp3 = this.#tmp3.split('  ');
+                                    this.#tmp3 = this.#tmp3[2].split(' ');
 
-                                if (this.#maxX < Number(this.#tmp3[2])) {
-                                    this.#maxX = Number(this.#tmp3[2]);
-                                }
-                                if (this.#maxY < Number(this.#tmp3[3])) {
-                                    this.#maxY = Number(this.#tmp3[3]);
+                                    if (this.#maxX < Number(this.#tmp3[2])) {
+                                        this.#maxX = Number(this.#tmp3[2]);
+                                    }
+                                    if (this.#maxY < Number(this.#tmp3[3])) {
+                                        this.#maxY = Number(this.#tmp3[3]);
+                                    }
                                 }
                             }
-                        }
-                        this.#canvasOriginalWidth = this.#maxX;
-                        this.#canvasOriginalHeight = this.#maxY;
+                            this.#canvasOriginalWidth = this.#maxX;
+                            this.#canvasOriginalHeight = this.#maxY;
 
-                        this.#ctx.clearRect(0, 0, 1000000, 1000000);
+                            this.#ctx.clearRect(0, 0, 1000000, 1000000);
 
-                        if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
-                            this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
-                            this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
-                            // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
-                            // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
-                            this.#brushSize = this.#brushSizePX;
-                            this.#strokeSize = this.#strokeSizePX;
-                            this.#ctx.scale(this.#scaleX, this.#scaleY);
+                            if (this.#canvas.width / this.#canvasOriginalWidth !== this.#scaleX && this.#canvas.height / this.#canvasOriginalHeight !== this.#scaleY) {
+                                this.#scaleX = this.#canvas.width / this.#canvasOriginalWidth;
+                                this.#scaleY = this.#canvas.height / this.#canvasOriginalHeight;
+                                // this.#brushSize = this.#brushSizePX / ((this.#scaleX + this.#scaleY) / 2);
+                                // this.#strokeSize = this.#strokeSizePX / ((this.#scaleX + this.#scaleY) / 2);
+                                this.#brushSize = this.#brushSizePX;
+                                this.#strokeSize = this.#strokeSizePX;
+                                this.#ctx.scale(this.#scaleX, this.#scaleY);
+                            }
+                            // this.#tmp = 300 / this.#tmp.length;
+
+                            this.drawFromGcode(data);
+                            data = data.split('\n').map((a) => a + '\n');
+                            data.pop();
+                            this.#gCode = data;
+                        } else {
+                            this.#ctx.clearRect(0, 0, 1000000, 1000000);
+                            this.#gCode = [];
                         }
-                        // this.#tmp = 300 / this.#tmp.length;
-                        this.drawFromGcode(data);
-                        data = data.split('\n').map((a) => a + '\n');
-                        data.pop();
-                        this.#gCode = data;
                     })
                     .catch((err) => {
                         console.log(err);
@@ -513,7 +519,7 @@ if (typeof DrawingApp === 'undefined') {
             };
 
             this.#brushMove = (e) => {
-                if (this.#canDraw) {
+                if (this.#canDraw && !e.target.closest('color-picker')) {
                     e.preventDefault();
                     this.#canvasBounds = this.#canvas.getBoundingClientRect();
 
